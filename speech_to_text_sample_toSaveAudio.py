@@ -7,6 +7,7 @@ from google.cloud import speech_v1 as speech
 
 import pyaudio
 import queue
+import wave
 
 # Audio recording parameters
 RATE = 16000
@@ -16,6 +17,10 @@ CHUNK = int(RATE / 10)  # 100ms
 # おそらくだが「既定のマイク」->　DEVICE_INDEX = 1
 # 「既定の通信マイク」->　DEVICE_INDEX = 2
 DEVICE_INDEX = 2
+
+# pyAudiosample
+FORMAT = pyaudio.paInt16
+WAVE_OUTPUT_FILENAME = "output.wav"
 
 class MicrophoneStream(object):
     """Opens a recording stream as a generator yielding the audio chunks."""
@@ -28,6 +33,8 @@ class MicrophoneStream(object):
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
         self.closed = True
+        # Save Audio Buff
+        self._frames = []
 
     def __enter__(self):
         self._audio_interface = pyaudio.PyAudio()
@@ -60,6 +67,15 @@ class MicrophoneStream(object):
         self._buff.put(None)
         self._audio_interface.terminate()
 
+        # save wav failes
+        wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(self._frames))
+        wf.close()
+        print("sudioStreamEnd")
+
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
         self._buff.put(in_data)
@@ -78,6 +94,8 @@ class MicrophoneStream(object):
             # Now consume whatever other data's still buffered.
             while True:
                 try:
+                    # Add Audio file
+                    self._frames.append(chunk)
                     chunk = self._buff.get(block=False)
                     if chunk is None:
                         return
@@ -132,6 +150,7 @@ def listen_print_loop(responses):
         overwrite_chars = " " * (num_chars_printed - len(transcript))
 
         if not result.is_final:
+            print("transcript" + transcript)
             sys.stdout.write(transcript + overwrite_chars + "\r")
             sys.stdout.flush()
 
@@ -139,7 +158,7 @@ def listen_print_loop(responses):
 
         else:
             print("transcript + overwrite_chars"+ transcript + overwrite_chars)
-            break
+            return False
 
             # Exit recognition if any of the transcribed phrases could be
             # one of our keywords.
@@ -148,6 +167,7 @@ def listen_print_loop(responses):
                 break
 
             num_chars_printed = 0
+        # print("listen_print_loop end")
 
 def main():
     # See http://g.co/cloud/speech/docs/languages
@@ -177,8 +197,9 @@ def main():
         responses = client.streaming_recognize(streaming_config, requests)
 
         # Now, put the transcription responses to use.
-        listen_print_loop(responses)
-        print("end Recogniaze")
+        flag = listen_print_loop(responses)
+        if(flag):
+            print("end Recogniaze")
 
 if __name__ == "__main__":
     main()
