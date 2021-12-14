@@ -166,7 +166,7 @@ def main():
                 window['-M_BOX_2-'].print(str(i)+' は 13 の倍数です。', text_color='red')
 
             # message.txtに書かれている内容を表示する
-            with open("./Sample/message.txt",encoding="utf-8") as message_file: # メッセージボックス入力
+            with open("./Sample_GUI/message.txt",encoding="utf-8") as message_file: # メッセージボックス入力
                 window['-M_BOX_1-'].Update(message_file.read())
                 
     window.close()

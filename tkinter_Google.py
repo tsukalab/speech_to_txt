@@ -251,8 +251,6 @@ def work1(device_name = "MIC",device_index = 0):
                     # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
                     mikiserCount = mikiserCount+1 
                     
-                
-
             #     setxt = ""
             #     if(len(txtlist) <= num_comment):
             #         for i in range(len(txtlist)):
