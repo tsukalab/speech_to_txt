@@ -1,5 +1,6 @@
 # https://www.odndo.com/posts/1627006679066/
 import threading
+from tkinter.constants import FALSE
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.patches as patch
@@ -27,13 +28,18 @@ def draw_figure(canvas, figure):
     figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
     return figure_canvas_agg
 
-def main():
+MIC_RESULT = "saisyo"
+MIC_FLAG  = False
+
+def draw_window():
+    global MIC_FLAG
+
     # カラム設定
     layout = [            
                 # 下部カラム
                 [
-                    sg.T(size=(45,5), key='-M_BOX_1-', background_color='black'),
-                    sg.Multiline(size=(45,5), key='-M_BOX_2-'),
+                    sg.T(size=(50,5), key='-M_BOX_1-', background_color='black'),
+                    sg.Multiline(size=(65,5), key='-M_BOX_2-'),
                     sg.Canvas(size=(640, 480), key='-CANVAS_3-')
                 ]
             ]
@@ -80,69 +86,88 @@ def main():
     # ------------------------------------------------------
     # 描画設定
     #-------------------------------------------------------
-
+    
     # 描画ループ
     while True:
+        event, values = window.read(timeout=10)
+        if event in ('Exit', None):
+            exit(69)
+        if(MIC_FLAG):
+            MIC_FLAG = True
+            window['-M_BOX_2-'].print(MIC_RESULT, text_color='green')
+            print("aa")
+
+        # window['-M_BOX_1-'].Update("aaa")        
+        # fig_agg_3.draw()
+
+        # text = stt.Listen_print(2)
+        # text.main()
+        # tt = str(text.get_return_value())
+        # time = str(text.get_date())
+        # print(tt)
+        # 
         
-        for i in range(len(dpts)):
+        # for i in range(len(dpts)):
+        #     event, values = window.read(timeout=10)
+        #     if event in ('Exit', None):
+        #         exit(69)
 
-            event, values = window.read(timeout=10)
-            if event in ('Exit', None):
-                exit(69)
-
-            # グラフ描画のクリア
+        #     # グラフ描画のクリア
+        #     ax_3.cla()
+        #     # グラフ3の描画
+        #     # 円-楕円 描画
+        #     ellipse = patch.Ellipse(xy=(0.5, 0.5), width=np.sin(i/3), height=1, fill=False, ec='yellow')
+        #     ax_3.add_patch(ellipse)
+        #     # グラフの描画        
+        #     fig_agg_3.draw()
         
-            ax_3.cla()
-
-        # ax_1のグリッド描画
-
-            # グラフ1の描画
-            # 黄色折れ線グラフのアニメーション
-            
-
-            # グラフ2の描画
-            
-            
-            # グラフ3の描画
-            # 円-楕円 描画
-            ellipse = patch.Ellipse(xy=(0.5, 0.5), width=np.sin(i/3), height=1, fill=False, ec='yellow')
-            ax_3.add_patch(ellipse)
-
-
-            # グラフの描画
+        # with open('./Sample_GUI/message.txt',encoding="utf-8") as message_file: # メッセージボックス入力
+        #     window['-M_BOX_1-'].Update(message_file.read())
         
-            fig_agg_3.draw()
+# class Tts_Result(object):
+#     def __init__(self,_deviceindex):
+#         self._DEVICE_INDEX =  _deviceindex
+#         self._RETURN_VALUE = "aiu"
+#         self._date = "" 
 
-            # t1 = threading.Thread(target=stt.main, args=(1))
-            # t2 = threading.Thread(target=stt.main, args=(2))
-            # t1.setDaemon(True)
-            # t2.setDaemon(True)
-            # t1.start()
-            # t2.start()
+def get_tts_result(devicename, deviceindex):
+    global MIC_RESULT
+    while True:
+        print("arara")
+        text = stt.Listen_print(deviceindex)
+        text.main()
+        tt = str(text.get_return_value())
+        time = str(text.get_date())
+        print(tt)
+        if(devicename=="MIC"):
+            MIC_RESULT = time+tt 
+            MIC_FLAG = True
 
-            text = stt.Listen_print(2)
-            text.main()
-            tt = str(text.get_return_value())
-            time = str(text.get_date())
-            print(tt)
-            window['-M_BOX_2-'].print(time+":"+tt, text_color='green')
-
-            # ------------------------------------------------------
-            # メッセージ内容設定
-            # ------------------------------------------------------
-            # iが各数字の倍数であるときに色を変更しながらメッセージとして表示する
-            # if i % 5 == 0:
-                # window['-M_BOX_2-'].print(str(i)+' は 5 の倍数です。', text_color='green')
-            # if i % 7 == 0:
-                # window['-M_BOX_2-'].print(str(i)+' は 7 の倍数です。', text_color='black')
-            # if i % 13 == 0:
-                # window['-M_BOX_2-'].print(str(i)+' は 13 の倍数です。', text_color='red')
-            # message.txtに書かれている内容を表示する
-            
-            with open('./Sample_GUI/message.txt',encoding="utf-8") as message_file: # メッセージボックス入力
-                window['-M_BOX_1-'].Update(message_file.read())
-
-    window.close()
+    # return tt
+    # window['-M_BOX_2-'].print(time+":"+tt, text_color='green')
 
 if __name__ == '__main__':
-    main()
+    t1 = threading.Thread(target=draw_window)
+    t2 = threading.Thread(target=get_tts_result, args=("MIC",2))
+    t3 = threading.Thread(target=get_tts_result, args=("Mik",1))
+    t1.setDaemon(True)
+
+# t1.join()
+    t2.setDaemon(True)
+    t3.setDaemon(True)
+    t1.start()
+    t2.start()
+
+    # t3.start()
+    t1.join()
+    t2.join()
+
+#
+    #  if(ch):
+        # break
+    # get_tts_result(2)
+    # draw_window()
+
+
+
+    # main()
