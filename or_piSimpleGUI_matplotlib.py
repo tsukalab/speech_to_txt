@@ -31,143 +31,135 @@ def draw_figure(canvas, figure):
 MIC_RESULT = "saisyo"
 MIC_FLAG  = False
 
-def draw_window():
-    global MIC_FLAG
-
-    # カラム設定
-    layout = [            
-                # 下部カラム
-                [
-                    sg.T(size=(50,5), key='-M_BOX_1-', background_color='black'),
-                    sg.Multiline(size=(65,5), key='-M_BOX_2-'),
-                    sg.Canvas(size=(640, 480), key='-CANVAS_3-')
+class Draw_window(object):
+    def __init__(self):
+        self.is_valid = True
+        # カラム設定
+        layout = [            
+                    # 下部カラム
+                    [
+                        sg.Button('Start', size=(10,2)),
+                        # sg.Text('', size=(30, 2)), sg.Text('Press "Start" button', size=(55, 12), key='-MAIN-'),
+                        sg.T(size=(50,5), key='-M_BOX_1-', background_color='black'),
+                        sg.Multiline(size=(65,5), key='-M_BOX_2-'),
+                        sg.Canvas(size=(640, 480), key='-CANVAS_3-')
+                    ]
                 ]
-            ]
+        # Window設定
+        sg.theme('Dark Teal8')   # GUIテーマの変更
+        self.window = sg.Window(
+                    'テスト', # タイトルバーのタイトル
+                    layout, # 採用するレイアウトの変数
+                    finalize=True,
+                    auto_size_text=True,
+                    location=(0, 0),
+                    # no_titlebar=True, # タイトルバー無しにしたい時はコメントアウトを解除
+                    )
+        # window.Maximize()   # フルスクリーン化したい時にはコメントアウトを解除
+        canvas_elem_3 = self.window['-CANVAS_3-'] # CANVAS_3 = 円の回転アニメーショングラフ    
+        m_box_1 = self.window['-M_BOX_1-']   # 左下左メッセージボックス
+        m_box_2 = self.window['-M_BOX_2-']   # 左下右メッセージボックス
+        canvas_3 = canvas_elem_3.TKCanvas
 
-    # Window設定
-    sg.theme('Dark Teal8')   # GUIテーマの変更
-    window = sg.Window(
-                'テスト', # タイトルバーのタイトル
-                layout, # 採用するレイアウトの変数
-                finalize=True,
-                auto_size_text=True,
-                location=(0, 0),
-                # no_titlebar=True, # タイトルバー無しにしたい時はコメントアウトを解除
-                )
-    # window.Maximize()   # フルスクリーン化したい時にはコメントアウトを解除
-    canvas_elem_3 = window['-CANVAS_3-'] # CANVAS_3 = 円の回転アニメーショングラフ    
-    m_box_1 = window['-M_BOX_1-']   # 左下左メッセージボックス
-    m_box_2 = window['-M_BOX_2-']   # 左下右メッセージボックス
-    canvas_3 = canvas_elem_3.TKCanvas
+        # ------------------------------------------------------
+        # プロット設定
+        #-------------------------------------------------------
 
-    # ------------------------------------------------------
-    # プロット設定
-    #-------------------------------------------------------
+        # matplotlibスタイル（'dark_background'）
+        plt.style.use('dark_background') 
 
-    # matplotlibスタイル（'dark_background'）
-    plt.style.use('dark_background') 
+        # グラフサイズ変更（figsize=(横インチ ,縦インチ)
+        fig_3 = Figure(figsize=(1, 1)) 
 
-    # グラフサイズ変更（figsize=(横インチ ,縦インチ)
-    fig_3 = Figure(figsize=(1, 1)) 
+        # axesオブジェクト設定（1行目・1列・1番目）
 
-    # axesオブジェクト設定（1行目・1列・1番目）
+        ax_3 = fig_3.add_subplot(111)
+        ax_3.xaxis.set_visible(False)
+        ax_3.yaxis.set_visible(False)
 
-    ax_3 = fig_3.add_subplot(111)
-    ax_3.xaxis.set_visible(False)
-    ax_3.yaxis.set_visible(False)
+        # グラフの描画
+        fig_agg_3 = draw_figure(canvas_3, fig_3)
+        # ランダム数値データの用意
+        NUM_DATAPOINTS = 10000 # ランダムデータ用の数値ポイント最大値
+        dpts = [np.sqrt(1-np.sin(x)) for x in range(NUM_DATAPOINTS)] # ランダム数値リスト
+        # ------------------------------------------------------
+        # 描画設定
+        #-------------------------------------------------------
+        self.window['-M_BOX_2-'].print("tesy", text_color='green')
+        self._window()
+    # コールバック関数
+    def on_closing(self):
+        global is_valid
+        is_valid = False
+        
+        self.window.close() # Windowを破棄
 
-    # グラフの描画
-    fig_agg_3 = draw_figure(canvas_3, fig_3)
+    def add_result(self, MIC_RESULT):
+        # while is_valid:
+        self.is_valid = False
+        self.window['-M_BOX_2-'].print(MIC_RESULT, text_color='green')
+            # is_valid = False
+            # break
 
-    # ランダム数値データの用意
-    NUM_DATAPOINTS = 10000 # ランダムデータ用の数値ポイント最大値
-    dpts = [np.sqrt(1-np.sin(x)) for x in range(NUM_DATAPOINTS)] # ランダム数値リスト
+    def _window(self):
+        print("window")
+        ttss = Tts_Result("MIC",2)  
+        while True:
+            event, values = self.window.read(timeout=10)
+            if event == sg.WIN_CLOSED:
+                break
+            elif event == 'Start':
+                print("Start")
+                ttss.get_tts_result()
+                threading.Thread(target=ttss.get_tts_result, daemon=True).start()
+            elif event == 'Alarm':
+                message = values[event]
+                sg.popup_auto_close(message)
+                # self.on_closing()
+            else:
+                if(ttss.get_FLAG()):
+                    self.window['-M_BOX_2-'].print(ttss.get_result(), text_color='green')
+                    ttss.set_FLAG()
+                # print(event)
+                continue
+            if event in ('Exit', None):
+                exit(69)
+        
+        self.window.close()# ウィンドウの破棄と終了
+        
+class Tts_Result(object):
+    def __init__(self,devicename, deviceindex):
+        self._DEVICE_INDEX =  deviceindex
+        self._RETURN_VALUE = "aiu"
+        self._date = "" 
+        self.tts_FLAG = False
 
-    # ------------------------------------------------------
-    # 描画設定
-    #-------------------------------------------------------
+    def get_tts_result(self):
+        while True:
+            print("Start recognize")
+            text = stt.Listen_print(self._DEVICE_INDEX)
+            text.main()
+            tt = str(text.get_return_value())
+            time = str(text.get_date())
+            self._RETURN_VALUE= time+tt
+            self.tts_FLAG = True
+            # if(devicename=="MIC"):
+                # MIC_RESULT = time+tt 
+                # MIC_FLAG = True
+            # return MIC_RESULT
+            # win.close_window()
+            # win.add_result(MIC_RESULT)
+            return self._RETURN_VALUE
+            break
+    def get_result(self):
+        return self._RETURN_VALUE
+
+    def get_FLAG(self):
+        return self.tts_FLAG
     
-    # 描画ループ
-    while True:
-        event, values = window.read(timeout=10)
-        if event in ('Exit', None):
-            exit(69)
-        if(MIC_FLAG):
-            MIC_FLAG = True
-            window['-M_BOX_2-'].print(MIC_RESULT, text_color='green')
-            print("aa")
-
-        # window['-M_BOX_1-'].Update("aaa")        
-        # fig_agg_3.draw()
-
-        # text = stt.Listen_print(2)
-        # text.main()
-        # tt = str(text.get_return_value())
-        # time = str(text.get_date())
-        # print(tt)
-        # 
-        
-        # for i in range(len(dpts)):
-        #     event, values = window.read(timeout=10)
-        #     if event in ('Exit', None):
-        #         exit(69)
-
-        #     # グラフ描画のクリア
-        #     ax_3.cla()
-        #     # グラフ3の描画
-        #     # 円-楕円 描画
-        #     ellipse = patch.Ellipse(xy=(0.5, 0.5), width=np.sin(i/3), height=1, fill=False, ec='yellow')
-        #     ax_3.add_patch(ellipse)
-        #     # グラフの描画        
-        #     fig_agg_3.draw()
-        
-        # with open('./Sample_GUI/message.txt',encoding="utf-8") as message_file: # メッセージボックス入力
-        #     window['-M_BOX_1-'].Update(message_file.read())
-        
-# class Tts_Result(object):
-#     def __init__(self,_deviceindex):
-#         self._DEVICE_INDEX =  _deviceindex
-#         self._RETURN_VALUE = "aiu"
-#         self._date = "" 
-
-def get_tts_result(devicename, deviceindex):
-    global MIC_RESULT
-    while True:
-        print("arara")
-        text = stt.Listen_print(deviceindex)
-        text.main()
-        tt = str(text.get_return_value())
-        time = str(text.get_date())
-        print(tt)
-        if(devicename=="MIC"):
-            MIC_RESULT = time+tt 
-            MIC_FLAG = True
-
-    # return tt
-    # window['-M_BOX_2-'].print(time+":"+tt, text_color='green')
+    def set_FLAG(self):
+        self.tts_FLAG = False
 
 if __name__ == '__main__':
-    t1 = threading.Thread(target=draw_window)
-    t2 = threading.Thread(target=get_tts_result, args=("MIC",2))
-    t3 = threading.Thread(target=get_tts_result, args=("Mik",1))
-    t1.setDaemon(True)
-
-# t1.join()
-    t2.setDaemon(True)
-    t3.setDaemon(True)
-    t1.start()
-    t2.start()
-
-    # t3.start()
-    t1.join()
-    t2.join()
-
-#
-    #  if(ch):
-        # break
-    # get_tts_result(2)
-    # draw_window()
-
-
-
-    # main()
+    win = Draw_window()
+    win.window()

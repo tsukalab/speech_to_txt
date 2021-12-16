@@ -34,11 +34,13 @@ import queue
 # Audio recording parameters
 RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms
+FORMAT = pyaudio.paInt16
 NAME_MIKISER = "ステレオ ミキサー (Realtek High Definit"
 NAME_MIC = "マイク配列 (Realtek High Definition"
 
 Bfolder = "F:/wavtomo/wav_Befor_Recognize/"
 Afloder = "F:/wavtomo/wav_After_Recognize/"
+WAVE_OUTPUT_FILENAME = "output.wav"
 
 class MicrophoneStream(object):
     
@@ -50,6 +52,8 @@ class MicrophoneStream(object):
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
         self.closed = True
+        # Save Audio Buff
+        self._frames = []
     
     def __enter__(self):
         self._audio_interface = pyaudio.PyAudio()        
@@ -74,7 +78,7 @@ class MicrophoneStream(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        print("PyAUDIO STREAM STOP")
+        # print("PyAUDIO STREAM STOP")
         self._audio_stream.stop_stream()
         self._audio_stream.close()
         self.closed = True
@@ -82,31 +86,22 @@ class MicrophoneStream(object):
         # streaming_recognize method will not block the process termination.
         self._buff.put(None)
         self._audio_interface.terminate()
-        print("PyAUDIO STREAM END")
+        # print("PyAUDIO STREAM END")
+    
+    # save wav failes
+        wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(self._frames))
+        wf.close()
+        print("sudioStreamEnd")
         
 
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
         self._buff.put(in_data)
         return None, pyaudio.paContinue
-
-    def saveWavFile(self):
-        while not self.closed:
-            stream = self._audio_stream
-            frames = []
-            for i in range(0, int(RATE / CHUNK * 5)):
-                data = stream.read(CHUNK)
-                frames.append(data)
-            stream.stop_stream()
-            stream.close()
-            self._audio_interface.terminate()
-
-            wf = wave.open("WAVE_OUTPUT_FILENAME.wav", 'wb')
-            wf.setnchannels(1)
-            wf.setsampwidth(self._audio_interface.get_sample_size(pyaudio.paInt16))
-            wf.setframerate(RATE)
-            wf.writeframes(b''.join(frames))
-            wf.close()
 
     def generator(self):
         while not self.closed:
@@ -121,17 +116,12 @@ class MicrophoneStream(object):
             # Now consume whatever other data's still buffered.
             while True:
                 try:
+                    self._frames.append(chunk)
                     chunk = self._buff.get(block=False)
                     if chunk is None:
                         return
                     data.append(chunk)
                 except queue.Empty:
-                    # wf = wave.open("WAVE_OUTPUT_FILENAME!.wav", 'wb')
-                    # wf.setnchannels(1)
-                    # wf.setsampwidth(self._audio_interface.get_sample_size(pyaudio.paInt16))
-                    # wf.setframerate(RATE)
-                    # wf.writeframes(b''.join(data))
-                    # wf.close()
                     break
 
             yield b"".join(data)
@@ -214,10 +204,11 @@ def work1(device_name = "MIC",device_index = 0):
         
         num_chars_printed = 0
         for response in responses:
-            print(now.strftime('%Y.%m.%d-%H.%M.%S'))
+            nowt = now.strftime('%Y.%m.%d-%H.%M.%S')
+            # print(nowt)
             mikx  = mikiserCount/(micCount+mikiserCount)
             micx  = micCount/(micCount+mikiserCount)
-            print(1000*mikx,micCount/1000*micx)    
+            # print(1000*mikx,micCount/1000*micx)    
             if not response.results:
                 continue
             # The `results` list is consecutive. For streaming, we only care about
@@ -250,6 +241,12 @@ def work1(device_name = "MIC",device_index = 0):
                     lis = [txtlist,0]
                     # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
                     mikiserCount = mikiserCount+1 
+            else:
+                print("end ddd"+nowt)
+                print( transcript + overwrite_chars)
+                break
+
+
                     
             #     setxt = ""
             #     if(len(txtlist) <= num_comment):
@@ -295,13 +292,13 @@ def btn_clicked():
     device_INDEX_MIKISER = 0
     device_INDEX_MIC = 2
     for i, microphone_name in enumerate(sr.Microphone.list_microphone_names()):
-        print(str(i)+":"+microphone_name)
+        # print(str(i)+":"+microphone_name)
         if NAME_MIC == microphone_name:
             device_INDEX_MIC = i
-            print("MIC" + str(device_INDEX_MIC))
+            # print("MIC" + str(device_INDEX_MIC))
         if NAME_MIKISER == microphone_name:
             device_INDEX_MIKISER = i
-            print("MIKISER" + str(device_INDEX_MIKISER))
+            # print("MIKISER" + str(device_INDEX_MIKISER))
 
     t1 = threading.Thread(target=work1,args=("MIC", int(device_INDEX_MIC)))
     t2 = threading.Thread(target=work1,args=("MIKISER", int(device_INDEX_MIKISER)))
@@ -324,7 +321,7 @@ if __name__ == '__main__':
     root = tkinter.Tk()
     ww = root.winfo_screenwidth()
     wh = root.winfo_screenheight()
-    print(ww/2)
+    # print(ww/2)
 
     #root.wm_attributes("-topmost", True)
     ttk.Style().configure("TP.TFrame", background="snow")
@@ -357,8 +354,8 @@ if __name__ == '__main__':
     # ★
     label.place(x=0, y=(wh-num_comment*h-alpha))  # -αは下のタスクバーの分
     label2.place(x=0+label.winfo_reqwidth(), y=(wh-num_comment*h-alpha)-100)
-    labelmic.place(x=0, y=100) 
-    labelmikiser.place(x=0+labelmic.winfo_reqwidth(), y=100)  # -αは下のタスクバーの分
+    # labelmic.place(x=0, y=100) 
+    # labelmikiser.place(x=0+labelmic.winfo_reqwidth(), y=100)  # -αは下のタスクバーの分
 
     subf = tkinter.Tk()
     subf.protocol("WM_DELETE_WINDOW", "aaaaaaaaaaaaaaaaaaaaaaaaaaa")

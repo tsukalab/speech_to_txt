@@ -144,7 +144,7 @@ def work1():
     language_code = 'ja-JP'  # a BCP-47 language tag
     client = speech.SpeechClient()
     config = types.RecognitionConfig(
-        encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+        # encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=RATE,
         language_code=language_code)
     streaming_config = types.StreamingRecognitionConfig(

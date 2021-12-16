@@ -238,6 +238,7 @@ class Listen_print(object):
     def get_date(self):
         return self._date
 
-# if __name__ == "__main__":
-    # main()
+if __name__ == "__main__":
+    a = Listen_print(1)
+    a.main()
     
