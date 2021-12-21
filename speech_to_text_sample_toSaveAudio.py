@@ -3,7 +3,7 @@ import datetime
 
 import re
 import sys
-from PySimpleGUI.PySimpleGUI import Tree
+from PySimpleGUI.PySimpleGUI import RealtimeButton, Tree
 
 from google.cloud import speech_v1 as speech
 
@@ -130,6 +130,7 @@ class Listen_print(object):
         self._POGRESS_RESULT = "POGRESS_RESULT"
         self.condition = False
         self._deviceName = deviceNAME
+        self._chrCount = 0
 
     def _listen_print_loop(self,responses):
         """Iterates through server responses and prints them.
@@ -222,11 +223,6 @@ class Listen_print(object):
                 speech.StreamingRecognizeRequest(audio_content=content)
                 for content in audio_generator
             )
-            # 時刻取得
-            now = datetime.datetime.now()
-            AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+".wav"
-            self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
-            AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
             # 使用可能なデバイスの表示
             # stream.print_deviceList()
             print("【何か話してください】")
@@ -249,10 +245,11 @@ class Listen_print(object):
                 # print("overwrite_chars"+ overwrite_chars)
 
                 if not result.is_final:
-                    if(count==0):
+                    if(count==0): # 発話時の時刻取得
                         now = datetime.datetime.now()
                         AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+".wav"
                         self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
+                        AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
                         count+=1
                         
                     txtlist = transcript
@@ -264,6 +261,7 @@ class Listen_print(object):
                     # 認識結果が確定したら
                     # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
                     self._RETURN_VALUE = txtlist
+                    self._chrCount += len(txtlist)
                     break
             # self._listen_print_loop(responses)
         
@@ -281,6 +279,8 @@ class Listen_print(object):
         self.condition = False
     def get_deviceName(self):
         return self._deviceName
+    def get_chrCount(self):
+        return self._chrCount
 # if __name__ == "__main__":
 #     a = Listen_print(1)
 #     a.main()
