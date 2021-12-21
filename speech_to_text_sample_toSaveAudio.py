@@ -216,6 +216,7 @@ class Listen_print(object):
         )
 
         with _MicrophoneStream(RATE, CHUNK, self._deviceindex) as stream:
+            count = 0
             audio_generator = stream.generator()
             requests = (
                 speech.StreamingRecognizeRequest(audio_content=content)
@@ -248,10 +249,17 @@ class Listen_print(object):
                 # print("overwrite_chars"+ overwrite_chars)
 
                 if not result.is_final:
+                    if(count==0):
+                        now = datetime.datetime.now()
+                        AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+".wav"
+                        self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
+                        count+=1
+                        
                     txtlist = transcript
                     # txtlist = textwrap.wrap(transcript, int(ww/w))
                     # print(txtlist)
                     self._POGRESS_RESULT = txtlist
+
                 else:
                     # 認識結果が確定したら
                     # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)

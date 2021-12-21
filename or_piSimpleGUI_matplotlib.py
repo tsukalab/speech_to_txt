@@ -87,11 +87,11 @@ class Draw_window(object):
         self.window['-M_BOX_2-'].print("tesy", text_color='green')
         self._window()
     # コールバック関数
-    def on_closing(self):
-        global is_valid
-        is_valid = False
+    # def on_closing(self):
+    #     global is_valid
+    #     is_valid = False
         
-        self.window.close() # Windowを破棄
+    #     self.window.close() # Windowを破棄
 
     def add_result(self, MIC_RESULT):
         # while is_valid:
@@ -102,9 +102,8 @@ class Draw_window(object):
 
     def _window(self):
         print("window")
-        # ttsMIC = Tts_Result("MIC",1)
+        #別ファイルの GCP STT の呼び出し
         ttsMIC = stt.Listen_print(2,"MIC")
-        # ttsMIKISER = Tts_Result("MIKISER",1)  
         ttsMIKISER = stt.Listen_print(1,"MIKISER")
         while True:
             event, values = self.window.read(timeout=10)
@@ -114,16 +113,12 @@ class Draw_window(object):
                 # 両マイクで認識を開始させる
                 print("Start1")
                 threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
-                # threading.Thread(target=ttsMIC.get_tts_result, daemon=True).start()
-                time.sleep(2)
+                time.sleep(2)#これを入れないとWindowがクラッシュする
                 print("Start2")
-                threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()
-                # threading.Thread(target=ttsMIKISER.get_tts_result, daemon=True).start()
-        
+                threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()      
             elif event == 'Alarm':
                 message = values[event]
                 sg.popup_auto_close(message)
-                # self.on_closing()
             else:
             # それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果出力後であればテキストエディタに情報を追加する
                 if(ttsMIC.get_condition()):
@@ -146,47 +141,6 @@ class Draw_window(object):
                 exit(69)
         
         self.window.close()# ウィンドウの破棄と終了
-        
-class Tts_Result(object):
-    def __init__(self, devicename, deviceindex):        
-        self._DEVICE_INDEX =  deviceindex
-        self.sttPackage = stt.Listen_print(self._DEVICE_INDEX)
-        self._RETURN_VALUE = self.sttPackage.get_result()
-        self._POGRESS_RESULT = self.sttPackage.get_progress_result()
-        self._date = self.sttPackage.get_date() 
-        self.condition = False
-        
-    def get_tts_result(self):
-        while True:
-            # print("Start recognize")
-            # text = stt.Listen_print(self._DEVICE_INDEX)
-            self.sttPackage.main()
-            self.sttPackage.get_progress_result()
-            tt = str(self.sttPackage.get_result())
-            time = str(self.sttPackage.get_date())
-            self._RETURN_VALUE= time+tt
-            self.condition = True
-            # if(devicename=="MIC"):
-                # MIC_RESULT = time+tt 
-                # MIC_FLAG = True
-            # return MIC_RESULT
-            # win.close_window()
-            # win.add_result(MIC_RESULT)
-            # return self._RETURN_VALUE
-            print("End recognize")
-            break
-            
-    def get_result(self):
-        return self._RETURN_VALUE
-    
-    def get_progress_result(self):
-        return self.sttPackage.get_progress_result()
-
-    def get_condition(self):
-        return self.condition
-    
-    def set_condition(self):
-        self.condition = False
 
 if __name__ == '__main__':
     win = Draw_window()
