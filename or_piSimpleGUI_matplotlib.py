@@ -7,11 +7,11 @@ import matplotlib.patches as patch
 import matplotlib.pyplot as plt
 import numpy as np
 import PySimpleGUI as sg
-
-import re
-import sys
+import time
 
 import speech_to_text_sample_toSaveAudio as stt
+
+
 
 # Audio recording parameters
 RATE = 16000
@@ -103,9 +103,9 @@ class Draw_window(object):
     def _window(self):
         print("window")
         # ttsMIC = Tts_Result("MIC",1)
-        ttsMIC = stt.Listen_print(2)
+        ttsMIC = stt.Listen_print(2,"MIC")
         # ttsMIKISER = Tts_Result("MIKISER",1)  
-        ttsMIKISER = stt.Listen_print(1)
+        ttsMIKISER = stt.Listen_print(1,"MIKISER")
         while True:
             event, values = self.window.read(timeout=10)
             if event == sg.WIN_CLOSED:
@@ -113,10 +113,11 @@ class Draw_window(object):
             elif event == 'Start':
                 # 両マイクで認識を開始させる
                 print("Start1")
-                # threading.Thread(target=ttsMIC.main, daemon=True).start()
+                threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
                 # threading.Thread(target=ttsMIC.get_tts_result, daemon=True).start()
+                time.sleep(2)
                 print("Start2")
-                threading.Thread(target=ttsMIKISER.main, daemon=True).start()
+                threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()
                 # threading.Thread(target=ttsMIKISER.get_tts_result, daemon=True).start()
         
             elif event == 'Alarm':
@@ -126,18 +127,16 @@ class Draw_window(object):
             else:
             # それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果出力後であればテキストエディタに情報を追加する
                 if(ttsMIC.get_condition()):
-                    print("-M_BOX_2-'MIC")
-                    self.window['-M_BOX_2-'].print("MIC:"+ttsMIC.get_result(), text_color='green')
+                    self.window['-M_BOX_2-'].print(ttsMIC.get_deviceName()+":"+ttsMIC.get_date()+ "\r"+ttsMIC.get_result(), text_color='red')
                     # self.window['-M_BOX_2-'].print("MIC:"+ttsMIC.get_result(), text_color='green')
                     ttsMIC.set_condition() #待機状態に戻す
-                    event == 'Start'
+                    # 認識をはじめる
+                    threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
                 if(ttsMIKISER.get_condition()):
-                    print("-M_BOX_2-MIK")
-                    self.window['-M_BOX_2-'].print("MIK:"+ttsMIKISER.get_result(), text_color='green')
+                    self.window['-M_BOX_2-'].print(ttsMIKISER.get_deviceName()+":"+ttsMIKISER.get_date()+ "\r"+ttsMIKISER.get_result(), text_color='green')
                     ttsMIKISER.set_condition() #待機状態に戻す
-                    event == 'Start'
-                    print(event)
-                # print(ttsMIKISER.get_progress_result())
+                    # 認識をはじめる
+                    threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()
                 self.window['-M_BOX_1-'].update(ttsMIC.get_progress_result())
                 self.window['-M_BOX_1-'].update(ttsMIKISER.get_progress_result())
                 # self.window['-M_BOX_2-'].Widget.clipboard_clear()

@@ -115,22 +115,21 @@ class _MicrophoneStream(object):
                     break
 
             yield b"".join(data)
-
-     
-    # 音声デバイスを一覧表示する
-    def print_deviceList(self):
+    
+    def print_deviceList(self):# 音声デバイスを一覧表示する
         audio = pyaudio.PyAudio()
         print("【オーディオデバイス一覧】")
         for x in range(0, audio.get_device_count()): 
             print("index"+str(x)+":"+audio.get_device_info_by_index(x).get("name"))
 
 class Listen_print(object):
-    def __init__(self, deviceindex):
+    def __init__(self, deviceindex, deviceNAME):
         self._deviceindex =  deviceindex
         self._RETURN_VALUE = "RETURN_VALUE"
         self._date = "00/00/00"
         self._POGRESS_RESULT = "POGRESS_RESULT"
         self.condition = False
+        self._deviceName = deviceNAME
 
     def _listen_print_loop(self,responses):
         """Iterates through server responses and prints them.
@@ -199,8 +198,7 @@ class Listen_print(object):
                 num_chars_printed = 0
             # print("listen_print_loop end")
 
-    def main(self):
-        
+    def start_recognize(self):
         # See http://g.co/cloud/speech/docs/languages
         # for a list of supported languages.
         # 認識の言語は日本語に変更している
@@ -232,10 +230,8 @@ class Listen_print(object):
             # stream.print_deviceList()
             print("【何か話してください】")
             responses = client.streaming_recognize(streaming_config, requests)
+            
             for response in responses:
-                # mikx  = mikiserCount/(micCount+mikiserCount)
-                # micx  = micCount/(micCount+mikiserCount)
-                # print(1000*mikx,micCount/1000*micx)    
                 if not response.results:
                     continue
                 # The `results` list is consecutive. For streaming, we only care about
@@ -252,22 +248,13 @@ class Listen_print(object):
                 # print("overwrite_chars"+ overwrite_chars)
 
                 if not result.is_final:
-                    # with open(AUDIO_FILE_PATH, "wb") as f:
-                    #   f.write(audio_generator)
-                    num_chars_printed = len(transcript)
                     txtlist = transcript
                     # txtlist = textwrap.wrap(transcript, int(ww/w))
-                    print(txtlist)
-                    lis = [txtlist,0]
-                    # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mik.csv", cut_time = 0 , progressTime = mikx)
-                    # micCount = micCount+1
-                    # var.set(txtlist) 
-
-                    lis = [txtlist,0]
-                    # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
-                    # mikiserCount = mikiserCount+1 
+                    # print(txtlist)
                     self._POGRESS_RESULT = txtlist
                 else:
+                    # 認識結果が確定したら
+                    # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
                     self._RETURN_VALUE = txtlist
                     break
             # self._listen_print_loop(responses)
@@ -284,6 +271,8 @@ class Listen_print(object):
         return self.condition 
     def set_condition(self):
         self.condition = False
+    def get_deviceName(self):
+        return self._deviceName
 # if __name__ == "__main__":
 #     a = Listen_print(1)
 #     a.main()
