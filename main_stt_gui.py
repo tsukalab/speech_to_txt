@@ -53,9 +53,7 @@ class Draw_window(object):
                     # 下部カラム
                     [sg.Column(col1),sg.Column(col2),sg.Column(col3)]
                 ]
-    # Window設定
-
-        
+    # Window設定  
         self.window = sg.Window(
                     '認識', # タイトルバーのタイトル
                     layout, # 採用するレイアウトの変数
@@ -71,12 +69,9 @@ class Draw_window(object):
         canvas_4 = self.window['-CANVAS_EN-'].TKCanvas
     
     # 円グラフ
-        
         self._data = [1, 1]
-        # self.labels = ['A', 'B', 'C', 'D', 'E']
-        
         fig = Figure(figsize=(1.5,1.5)) # create a figure object
-        fig.patch.set_facecolor('black')  # 図全体の背景色
+        fig.patch.set_facecolor('C9')  # 図全体の背景色
         self._ax = fig.add_subplot(111) # add an Axes to the figure
         self._ax.xaxis.set_visible(False)
         self._ax.yaxis.set_visible(False)
@@ -84,7 +79,6 @@ class Draw_window(object):
         # ax.patch.set_facecolor('green')  # subplotの背景色
         # figとCanvasを関連付ける
         self._fig_agg_4 = draw_figure(canvas_4, fig)
-        # fig_agg_4.draw()
 
         # ------------------------------------------------------
         # プロット設定
@@ -98,12 +92,6 @@ class Draw_window(object):
         #-------------------------------------------------------
         sg.theme('Dark Teal8')   # GUIテーマの変更
         self._window()
-    # コールバック関数
-    # def on_closing(self):
-    #     global is_valid
-    #     is_valid = False
-        
-    #     self.window.close() # Windowを破棄
 
     def pct_abs(self,pct, raw_data):
             absolute = int(np.sum(raw_data)*(pct/100.))
@@ -124,11 +112,16 @@ class Draw_window(object):
             counterclock=False, 
             startangle=90, 
             autopct=lambda p: self.pct_abs(p, self._data), 
-            pctdistance=0.75,
-            # ,textprops={'color': 'white', 'weight':'bold'}
+            pctdistance=0.9,
+            textprops={'color': 'white', 'weight':'bold'}
             # labeldistance=None
             )
-            self._ax.pie([100], colors='k', radius=0.5)
+            # self._ax.Circle((0,0),0.4,color='white', fc='white',linewidth=1.25)
+            # center_circle = plt.Circle((0,0),0.4,color='white', fc='white',linewidth=1.25) #中心(0,0)に40%の大きさで円を描画
+            # fig = plt.gcf()
+            # fig.gca().add_artist(center_circle)
+            # self._ax.add_artist(center_circle)
+            self._ax.pie([100],colors="C4", radius=0.5)
             self._fig_agg_4.draw()
             
             if event == sg.WIN_CLOSED:
@@ -137,7 +130,7 @@ class Draw_window(object):
                 # 両マイクで認識を開始させる
                 print("Start1")
                 threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
-                time.sleep(2)#これを入れないとWindowがクラッシュする
+                time.sleep(3)#これを入れないとWindowがクラッシュする
                 print("Start2")
                 threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()      
             elif event == 'Alarm':

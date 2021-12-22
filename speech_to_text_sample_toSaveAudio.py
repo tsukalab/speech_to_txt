@@ -10,11 +10,11 @@ from google.cloud import speech_v1 as speech
 import pyaudio
 import queue
 import wave
+import time
 
 Bfolder = "F:/wavtomo/wav_Befor_Recognize/"
 Afloder = "F:/wavtomo/wav_After_Recognize/"
 AUDIO_FILE_PATH = ""
-
 
 # Audio recording parameters
 RATE = 16000
@@ -36,6 +36,7 @@ class _MicrophoneStream(object):
         self._rate = rate 
         self._chunk = chunk
         self._deviceindex  = device_index
+        self._WAVE_OUTPUT_FILENAME = WAVE_OUTPUT_FILENAME
 
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
@@ -116,6 +117,9 @@ class _MicrophoneStream(object):
 
             yield b"".join(data)
     
+    def set_audio_file_path(self, file_name):
+        self._WAVE_OUTPUT_FILENAME
+
     def print_deviceList(self):# 音声デバイスを一覧表示する
         audio = pyaudio.PyAudio()
         print("【オーディオデバイス一覧】")
@@ -132,73 +136,6 @@ class Listen_print(object):
         self._deviceName = deviceNAME
         self._chrCount = 0
 
-    def _listen_print_loop(self,responses):
-        """Iterates through server responses and prints them.
-
-        The responses passed is a generator that will block until a response
-        is provided by the server.
-
-        Each response may contain multiple results, and each result may contain
-        multiple alternatives; for details, see https://goo.gl/tjCPAU.  Here we
-        print only the transcription for the top alternative of the top result.
-
-        In this case, responses are provided for interim results as well. If the
-        response is an interim one, print a line feed at the end of it, to allow
-        the next result to overwrite it, until the response is a final one. For the
-        final one, print a newline to preserve the finalized transcription.
-        """
-        num_chars_printed = 0
-        now = datetime.datetime.now()
-        print(now.strftime('%Y.%m.%d-%H.%M.%S'))
-        for response in responses:
-            
-            # mikx  = mikiserCount/(micCount+mikiserCount)
-            # micx  = micCount/(micCount+mikiserCount)
-            # print(1000*mikx,micCount/1000*micx)    
-            if not response.results:
-                continue
-
-            # The `results` list is consecutive. For streaming, we only care about
-            # the first result being considered, since once it's `is_final`, it
-            # moves on to considering the next utterance.
-            result = response.results[0]
-            if not result.alternatives:
-                continue
-
-            # Display the transcription of the top alternative.
-            transcript = result.alternatives[0].transcript
-            print(transcript)
-
-            # Display interim results, but with a carriage return at the end of the
-            # line, so subsequent lines will overwrite them.
-            #
-            # If the previous result was longer than this one, we need to print
-            # some extra spaces to overwrite the previous result
-            overwrite_chars = " " * (num_chars_printed - len(transcript))
-
-            if not result.is_final:
-                # print("transcript" + transcript)
-                # sys.stdout.write(transcript + overwrite_chars + "\r")
-                # sys.stdout.flush()
-
-                num_chars_printed = len(transcript)
-
-                self._POGRESS_RESULT = transcript + overwrite_chars 
-            else:
-                print("transcript + overwrite_chars"+ transcript + overwrite_chars)
-                self._RETURN_VALUE = transcript + overwrite_chars
-                # return transcript + overwrite_chars
-
-                # Exit recognition if any of the transcribed phrases could be
-                # one of our keywords.
-                break
-                if re.search(r"\b(exit|quit)\b", transcript, re.I):
-                    print("Exiting..")
-                    break
-
-                num_chars_printed = 0
-            # print("listen_print_loop end")
-
     def start_recognize(self):
         # See http://g.co/cloud/speech/docs/languages
         # for a list of supported languages.
@@ -212,12 +149,13 @@ class Listen_print(object):
             language_code=language_code,
         )
 
-        streaming_config = speech.StreamingRecognitionConfig(
+        _streaming_config = speech.StreamingRecognitionConfig(
             config=config, interim_results=True
         )
 
         with _MicrophoneStream(RATE, CHUNK, self._deviceindex) as stream:
             count = 0
+            num_chars_printed = 0
             audio_generator = stream.generator()
             requests = (
                 speech.StreamingRecognizeRequest(audio_content=content)
@@ -226,45 +164,54 @@ class Listen_print(object):
             # 使用可能なデバイスの表示
             # stream.print_deviceList()
             print("【何か話してください】")
-            responses = client.streaming_recognize(streaming_config, requests)
-            
-            for response in responses:
-                if not response.results:
-                    continue
-                # The `results` list is consecutive. For streaming, we only care about
-                # the first result being considered, since once it's `is_final`, it
-                # moves on to considering the next utterance.
-                result = response.results[0]
-                if not result.alternatives:
-                    continue
+            try:
+                responses = client.streaming_recognize(config=_streaming_config, requests=requests)
 
-                # Display the transcription of the top alternative.
-                transcript = result.alternatives[0].transcript
-                # overwrite_chars = " " * (num_chars_printed - len(transcript))
-                # print("transcript"+transcript )
-                # print("overwrite_chars"+ overwrite_chars)
+                for response in responses:
+                    if not response.results:
+                        continue
+                    # The `results` list is consecutive. For streaming, we only care about
+                    # the first result being considered, since once it's `is_final`, it
+                    # moves on to considering the next utterance.
+                    result = response.results[0]
+                    if not result.alternatives:
+                        continue
 
-                if not result.is_final:
-                    if(count==0): # 発話時の時刻取得
-                        now = datetime.datetime.now()
-                        AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+".wav"
-                        self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
-                        AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
-                        count+=1
+                    # Display the transcription of the top alternative.
+                    transcript = result.alternatives[0].transcript
+                    overwrite_chars = " " * (num_chars_printed - len(transcript))
+                    # print("overwrite_chars"+overwrite_chars)
+
+                    if not result.is_final:
+                        # print("transcript" + transcript)
+                        # sys.stdout.write(transcript + overwrite_chars + "\r")
+                        # sys.stdout.flush()
+                        if(count==0): # 発話時の時刻取得
+                            now = datetime.datetime.now()
+                            AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._deviceName+".wav"
+                            self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
+                            AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
+                            stream._WAVE_OUTPUT_FILENAME = AUDIO_FILE_NAME
+                            count+=1
                         
-                    txtlist = transcript
-                    # txtlist = textwrap.wrap(transcript, int(ww/w))
-                    # print(txtlist)
-                    self._POGRESS_RESULT = txtlist
+                        num_chars_printed = len(transcript)
+                        # txtlist = textwrap.wrap(transcript, int(ww/w))
+                        # print(txtlist)
+                        self._POGRESS_RESULT = transcript
 
-                else:
-                    # 認識結果が確定したら
-                    # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
-                    self._RETURN_VALUE = txtlist
-                    self._chrCount += len(txtlist)
-                    break
-            # self._listen_print_loop(responses)
-        
+                    else:
+                        # 認識結果が確定したら
+                        # addwriteCsvTwoContents(AUDIO_FILE_NAME = "null", RList = lis, LList = lis, openFileName = "mic.csv", cut_time = 0 , progressTime =  micx)
+                        self._RETURN_VALUE = transcript + overwrite_chars
+                        self._chrCount += len(transcript)
+                        break
+                        if re.search(r"\b(exit|quit)\b", transcript, re.I):
+                            print("Exiting..")
+                            break
+
+                        num_chars_printed = 0        
+            except BaseException as e:
+                print("Exception occurred - {}".format(str(e)))
         self.condition = True
 
     def get_result(self):
@@ -281,7 +228,7 @@ class Listen_print(object):
         return self._deviceName
     def get_chrCount(self):
         return self._chrCount
-# if __name__ == "__main__":
-#     a = Listen_print(1)
-#     a.main()
+if __name__ == "__main__":
+    a = Listen_print(2,"mic")
+    a.start_recognize()
     
