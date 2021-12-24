@@ -14,6 +14,7 @@ import time
 
 Bfolder = "F:/wavtomo/wav_Befor_Recognize/"
 Afloder = "F:/wavtomo/wav_After_Recognize/"
+audio_folder = "../Audio_GUI/"
 AUDIO_FILE_PATH = ""
 
 # Audio recording parameters
@@ -27,7 +28,7 @@ CHUNK = int(RATE / 10)  # 100ms
 
 # pyAudiosample
 FORMAT = pyaudio.paInt16
-WAVE_OUTPUT_FILENAME = "output.wav"
+
 
 class _MicrophoneStream(object):
     """Opens a recording stream as a generator yielding the audio chunks."""
@@ -36,7 +37,7 @@ class _MicrophoneStream(object):
         self._rate = rate 
         self._chunk = chunk
         self._deviceindex  = device_index
-        self._WAVE_OUTPUT_FILENAME = WAVE_OUTPUT_FILENAME
+        self._WAVE_OUTPUT_FILENAME = audio_folder+"output.wav"
 
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
@@ -67,7 +68,7 @@ class _MicrophoneStream(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        print("AudioSaveStart")
+        print("AudioSaveStart: "+self._WAVE_OUTPUT_FILENAME)
         self._audio_stream.stop_stream()
         self._audio_stream.close()
         self.closed = True
@@ -77,15 +78,15 @@ class _MicrophoneStream(object):
         self._audio_interface.terminate()
 
         # save wav failes
-        """
-        wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+        # """
+        wf = wave.open(self._WAVE_OUTPUT_FILENAME, 'wb')
         wf.setnchannels(1)
         wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
         wf.setframerate(RATE)
         wf.writeframes(b''.join(self._frames))
         wf.close()
-        """
-        print("sudioStreamEnd")
+        # """
+        print("SAVEEnd")
 
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
@@ -118,8 +119,16 @@ class _MicrophoneStream(object):
             yield b"".join(data)
     
     def set_audio_file_path(self, file_name):
-        self._WAVE_OUTPUT_FILENAME
+        self._WAVE_OUTPUT_FILENAME = file_name
 
+    def clear_audio_file(self):
+        # 発話前の無音部分をカットしておく
+        if(len(self._frames)-7>0):
+            del self._frames[:len(self._frames)-7]
+        else:
+            self._frames.clear()
+
+        
     def print_deviceList(self):# 音声デバイスを一覧表示する
         audio = pyaudio.PyAudio()
         print("【オーディオデバイス一覧】")
@@ -153,6 +162,9 @@ class Listen_print(object):
             config=config, interim_results=True
         )
 
+        now = datetime.datetime.now()
+        AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._deviceName+".wav"
+
         with _MicrophoneStream(RATE, CHUNK, self._deviceindex) as stream:
             count = 0
             num_chars_printed = 0
@@ -168,13 +180,14 @@ class Listen_print(object):
                 responses = client.streaming_recognize(config=_streaming_config, requests=requests)
 
                 for response in responses:
-                    if not response.results:
+                                            
+                    if not response.results:                        
                         continue
                     # The `results` list is consecutive. For streaming, we only care about
                     # the first result being considered, since once it's `is_final`, it
                     # moves on to considering the next utterance.
                     result = response.results[0]
-                    if not result.alternatives:
+                    if not result.alternatives:                        
                         continue
 
                     # Display the transcription of the top alternative.
@@ -182,16 +195,19 @@ class Listen_print(object):
                     overwrite_chars = " " * (num_chars_printed - len(transcript))
                     # print("overwrite_chars"+overwrite_chars)
 
-                    if not result.is_final:
+                    if not result.is_final:                                               
                         # print("transcript" + transcript)
                         # sys.stdout.write(transcript + overwrite_chars + "\r")
                         # sys.stdout.flush()
-                        if(count==0): # 発話時の時刻取得
+                        if(count==0): # 発話時の時刻取得                       
+                            stream.clear_audio_file()   
                             now = datetime.datetime.now()
                             AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._deviceName+".wav"
                             self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
-                            AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
-                            stream._WAVE_OUTPUT_FILENAME = AUDIO_FILE_NAME
+                            # AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
+                            AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
+                            stream.set_audio_file_path(AUDIO_FILE_PATH)
+                            print(AUDIO_FILE_PATH)
                             count+=1
                         
                         num_chars_printed = len(transcript)
@@ -212,6 +228,7 @@ class Listen_print(object):
                         num_chars_printed = 0        
             except BaseException as e:
                 print("Exception occurred - {}".format(str(e)))
+                stream.set_audio_file_path(AUDIO_FILE_NAME)
         self.condition = True
 
     def get_result(self):

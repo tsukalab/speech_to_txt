@@ -10,6 +10,7 @@ import PySimpleGUI as sg
 import time
 
 import speech_to_text_sample_toSaveAudio as stt
+import mecab_txt as mcb
 
 # Audio recording parameters
 RATE = 16000
@@ -123,40 +124,66 @@ class Draw_window(object):
             # self._ax.add_artist(center_circle)
             self._ax.pie([100],colors="C4", radius=0.5)
             self._fig_agg_4.draw()
-            
+            def aaaa(ttsObject):
+                mcbtxt = mcb.mecab_t(ttsObject.get_result())
+                self.window['-M_BOX_2-'].print(ttsObject.get_deviceName()+":"+ttsObject.get_date())
+                for key,result in mcbtxt:
+                    if(key=="名詞"):
+                        self.window['-M_BOX_2-'].print(result,text_color='red',end='')
+                    elif(key=="動詞"):
+                        self.window['-M_BOX_2-'].print(result,text_color='green',end='')
+                    else:
+                        self.window['-M_BOX_2-'].print(result,text_color='black',end='')
+                self.window['-M_BOX_2-'].print("\r")
+
+
             if event == sg.WIN_CLOSED:
                 break
             elif event == 'Start':
                 # 両マイクで認識を開始させる
                 print("Start1")
-                threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
+                t1 = threading.Thread(target=ttsMIC.start_recognize, daemon=True)
+                t1.start()
                 time.sleep(3)#これを入れないとWindowがクラッシュする
                 print("Start2")
-                threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()      
+                t2 = threading.Thread(target=ttsMIKISER.start_recognize, daemon=True)
+                t2.start()
             elif event == 'Alarm':
                 message = values[event]
                 sg.popup_auto_close(message)
+            elif event == 'Stop':
+                log_chat = self.window['-M_BOX_2-'].get()
+                f = open(ttsMIC.get_date()+'log_chat.txt', 'w')
+                f.write(log_chat)
+                f.close()
+                # t1.sleeo()
+                # t2.sleep()
+
             else:# それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果出力後であればテキストエディタに情報を追加する
-                if(ttsMIC.get_condition()):
+                if(ttsMIC.get_condition()):               
+                    # self.window['-M_BOX_2-'].print(ttsMIC.get_deviceName()+":"+ttsMIC.get_date()+ "\r"+ttsMIC.get_result(), text_color='red')
                     self.window['-M_BOX_2-'].print(ttsMIC.get_deviceName()+":"+ttsMIC.get_date()+ "\r"+ttsMIC.get_result(), text_color='red')
-                    # self.window['-M_BOX_2-'].print("MIC:"+ttsMIC.get_result(), text_color='green')
+                    # aaaa(ttsMIC)
                     ttsMIC.set_condition() #待機状態に戻す
                     # 認識をはじめる
                     threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
                     self._data[1]=self._data[1]+ttsMIC.get_chrCount()
                 if(ttsMIKISER.get_condition()):
+                    # aaaa(ttsMIKISER)
                     self.window['-M_BOX_2-'].print(ttsMIKISER.get_deviceName()+":"+ttsMIKISER.get_date()+ "\r"+ttsMIKISER.get_result(), text_color='green')
                     ttsMIKISER.set_condition() #待機状態に戻す
                     # 認識をはじめる
                     threading.Thread(target=ttsMIKISER.start_recognize, daemon=True).start()
                     self._data[0]=self._data[1]+ttsMIKISER.get_chrCount()                
-                # self.window['-M_BOX_2-'].update("aasa")
                 self.window['-M_BOX_1-'].update(ttsMIKISER.get_deviceName()+":"+str(ttsMIKISER.get_chrCount()) +"\r"+ttsMIKISER.get_progress_result(),text_color='white')
                 self.window['-M_BOX_1-2'].update(ttsMIC.get_deviceName()+":"+str(ttsMIC.get_chrCount())+"\r"+ttsMIC.get_progress_result(),text_color='white')
-                # self.window['-M_BOX_2-'].Widget.clipboard_clear()
-                # self.window['-M_BOX_2-'].print(ttsMIK.get_progress_result(), text_color='green')          
-                # continue
             if event in ('Exit', None):
+                log_chat = self.window['-M_BOX_2-'].get()
+                f = open(ttsMIC.get_date()+'log_chat.txt', 'w')
+                f.write(log_chat)
+                f.close()
+                # t1.sleeo()
+                # t2.sleep()
                 exit(69)
         
         self.window.close()# ウィンドウの破棄と終了
