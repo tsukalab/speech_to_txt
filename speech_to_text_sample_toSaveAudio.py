@@ -39,7 +39,7 @@ class _MicrophoneStream(object):
     def __init__(self, rate, chunk, device_index):
         self._rate = rate 
         self._chunk = chunk
-        self._deviceindex  = device_index
+        self._DEVICE_INDEX  = device_index
         self._WAVE_OUTPUT_FILENAME = audio_folder+"output.wav"
 
         # Create a thread-safe buffer of audio data
@@ -59,7 +59,7 @@ class _MicrophoneStream(object):
             input=True,
             frames_per_buffer=self._chunk,
             # デバイスのマイク設定する
-            input_device_index=self._deviceindex,
+            input_device_index=self._DEVICE_INDEX,
             # Run the audio stream asynchronously to fill the buffer object.
             # This is necessary so that the input device's buffer doesn't
             # overflow while the calling thread makes network requests, etc.
@@ -138,13 +138,13 @@ class _MicrophoneStream(object):
             print("index"+str(x)+":"+audio.get_device_info_by_index(x).get("name"))
 
 class Listen_print(object):
-    def __init__(self, deviceindex, deviceNAME):
-        self._deviceindex =  deviceindex
-        self._RETURN_RESULT = "【スタートボタンを押すと認識がはじまります】"
+    def __init__(self, deviceindex, deviceNAME, deviceNumber):
+        self._DEVICE_INDEX =  deviceindex
+        self._DEVICENAME_AND_NUMBER = (deviceNAME, deviceNumber)
+        self._return_result = "【スタートボタンを押すと認識がはじまります】"
         self._date = "00/00/00"
-        self._POGRESS_RESULT = "【スタートボタンを押すと認識がはじまります】"
+        self._progress_result = "【スタートボタンを押すと認識がはじまります】"
         self.condition = False
-        self._deviceName = deviceNAME
         self._chrCount = 0
         self._monoChrCount = 0
 
@@ -166,9 +166,9 @@ class Listen_print(object):
         )
 
         now = datetime.datetime.now()
-        AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._deviceName+".wav"
+        AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
 
-        with _MicrophoneStream(RATE, CHUNK, self._deviceindex) as stream:
+        with _MicrophoneStream(RATE, CHUNK, self._DEVICE_INDEX) as stream:
             count = 0
             num_chars_printed = 0
             audio_generator = stream.generator()
@@ -205,7 +205,7 @@ class Listen_print(object):
                         if(count==0): # 発話時の時刻取得                       
                             stream._clear_audio_file()   
                             now = datetime.datetime.now()
-                            AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._deviceName+".wav"
+                            AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
                             self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
                             # AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
                             AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
@@ -216,13 +216,13 @@ class Listen_print(object):
                         num_chars_printed = len(transcript)
                         # txtlist = textwrap.wrap(transcript, int(ww/w))
                         # print(txtlist)
-                        self._POGRESS_RESULT = transcript
+                        self._progress_result = transcript
                         self._monoChrCount = len(transcript)
 
                     else:
                         # 認識結果が確定したら
-                        self._RETURN_RESULT = transcript + overwrite_chars
-                        self._POGRESS_RESULT = transcript + overwrite_chars
+                        self._return_result = transcript + overwrite_chars
+                        self._progress_result = transcript + overwrite_chars
                         kakasi.setMode('J', 'H') #漢字からひらがなに変換
                         # kaka.setMode("K", "H") #カタカナからひらがなに変換
                         conv = kakasi.getConverter()
@@ -239,16 +239,16 @@ class Listen_print(object):
                 print("Exception occurred - {}".format(str(e)))
                 AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
                 stream._set_audio_file_path(AUDIO_FILE_PATH)
-                self._RETURN_RESULT = "【何か話してください】"
-                self._POGRESS_RESULT = "【何か話してください】"
+                self._return_result = "【何か話してください】"
+                self._progress_result = "【何か話してください】"
         self.condition = True
 
     def get_result(self):# 認識確定した文字起こしデータ
-        return self._RETURN_RESULT
+        return self._return_result
     def get_progress_result(self):# リアルタイムに認識されている文字起こしデータ
-        return self._POGRESS_RESULT 
+        return self._progress_result 
     def set_progress_result(self, contents):# リアルタイムに認識されている文字起こしデータ
-        self._POGRESS_RESULT = contents
+        self._progress_result = contents
     def get_date(self):
         return self._date
     def get_condition(self):
@@ -256,8 +256,8 @@ class Listen_print(object):
     def set_condition(self):
         self.condition = False
         self._monoChrCount = 0
-    def get_deviceName(self):#デバイスの名前の取り出し：MIC or MIXER
-        return self._deviceName
+    def get_deviceName_or_number(self,int):#デバイスの名前の取り出し：MIC or MIXER
+        return self._DEVICENAME_AND_NUMBER[int]
     def get_chrCount(self):#円グラフ用：総発話文字数の取り出し用
         return self._chrCount
     def get_monoChrCount(self):#棒グラフ用：都度発話数の取り出し用

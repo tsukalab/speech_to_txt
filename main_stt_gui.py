@@ -146,8 +146,8 @@ class Draw_window(object):
         
         print("window")
         #別ファイルの GCP Speech to Text を実行する関数の呼び出し
-        ttsMIC = stt.Listen_print(2,"MIC")
-        ttsMIXER = stt.Listen_print(1,"MIXER")
+        ttsMIC = stt.Listen_print(2,"MIC", 1)
+        ttsMIXER = stt.Listen_print(1,"MIXER",0)
         # self._ax5.set_xlim(0, 100)
         while True:
             event, values = self.window.read(timeout=10)
@@ -212,7 +212,7 @@ class Draw_window(object):
                 print("Start1")
                 t1 = threading.Thread(target=ttsMIC.start_recognize, daemon=True)
                 t1.start()
-                time.sleep(3)#これを入れないとpysimpleGUIのWindowがクラッシュする
+                time.sleep(5)#これを入れないとpysimpleGUIのWindowがクラッシュする
                 print("Start2")
                 t2 = threading.Thread(target=ttsMIXER.start_recognize, daemon=True)
                 t2.start()
@@ -249,35 +249,28 @@ class Draw_window(object):
 
             else:# それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果確定後であれば右側のテキストボックスに情報を追加する
                 append_graph_data(int(ttsMIC.get_monoChrCount()), int(ttsMIXER.get_monoChrCount()))
-                if(ttsMIC.get_condition()):               
-                    # append_graph_data(int(ttsMIC.get_chrCount()), int(ttsMIXER.get_chrCount()))
-                    if(ttsMIC.get_result()!="【スタートボタンを押すと認識がはじまります】"):
-                        ttsMIC.set_progress_result("【何か話してください】")
-                        self.window['-M_BOX_2-'].print(ttsMIC.get_deviceName()+":"+ttsMIC.get_date()+ "\r"+ttsMIC.get_result(), text_color='#fafad2')
+                
+                def display_result_on_textbox(ttsObject, text_color):
+                    if(ttsObject.get_result()!="【スタートボタンを押すと認識がはじまります】"):
+                        ttsObject.set_progress_result("【何か話してください】")
+                        if(ttsObject.get_result()!="【何か話してください】"):
+                            self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
                     # change_text_color(ttsMIC)
-                    ttsMIC.set_condition() #待機状態に戻す
-                    audiofilename = ttsMIC.get_date()+".wav"; result = [ttsMIC.get_result()]; num = ttsMIC.get_chrCount();filename = log_folder+'log_chat.csv'
+                    ttsObject.set_condition() #待機状態に戻す
+                    audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = log_folder+'log_chat.csv'
                     # 再度認識スレッドを立てる
-                    threading.Thread(target=ttsMIC.start_recognize, daemon=True).start()
-                    self._data[1]=self._data[1]+ttsMIC.get_chrCount()
+                    threading.Thread(target=ttsObject.start_recognize, daemon=True).start()
+                    self._data[1]=self._data[1]+ttsObject.get_chrCount()
                     # LOGの保存（CSV）
-                    addwriteCsvTwoContents(audiofilename,  result, num, filename, 1)
-                    
+                    addwriteCsvTwoContents(audiofilename,  result, num, filename, ttsObject.get_deviceName_or_number(1))
+                
+                if(ttsMIC.get_condition()):
+                    display_result_on_textbox(ttsMIC,'#fafad2')            
                 if(ttsMIXER.get_condition()):
-                    # append_graph_data(int(ttsMIC.get_chrCount()), int(ttsMIXER.get_chrCount()))
-                    if(ttsMIXER.get_result()!="【スタートボタンを押すと認識がはじまります】"):
-                        self.window['-M_BOX_2-'].print(ttsMIXER.get_deviceName()+":"+ttsMIXER.get_date()+ "\r"+ttsMIXER.get_result(), text_color='#008080')
-                    # change_text_color(ttsMIXER)
-                    ttsMIXER.set_condition() #待機状態に戻す
-                    audiofilename = ttsMIXER.get_date()+".wav"; result = [ttsMIXER.get_result()];num = ttsMIXER.get_chrCount(); filename = log_folder+'log_chat.csv'
-                    # 再度認識スレッドを立てる
-                    threading.Thread(target=ttsMIXER.start_recognize, daemon=True).start()
-                    self._data[0]=self._data[1]+ttsMIXER.get_chrCount()                
-                    # LOGの保存（CSV）
-                    addwriteCsvTwoContents(audiofilename,  result,num, filename, 0)
+                    display_result_on_textbox(ttsMIXER,'#008080') 
                 # 左黒色のテキストボックスに，リアルタイムの認識結果を表示させる
-                self.window['-M_BOX_1-'].update(ttsMIXER.get_deviceName()+":"+str(ttsMIXER.get_chrCount()) +"\r"+ttsMIXER.get_progress_result(),text_color='white')
-                self.window['-M_BOX_1-2'].update(ttsMIC.get_deviceName()+":"+str(ttsMIC.get_chrCount())+"\r"+ttsMIC.get_progress_result(),text_color='white')
+                self.window['-M_BOX_1-'].update(ttsMIXER.get_deviceName_or_number(0)+":"+str(ttsMIXER.get_chrCount()) +"\r"+ttsMIXER.get_progress_result(),text_color='white')
+                self.window['-M_BOX_1-2'].update(ttsMIC.get_deviceName_or_number(0)+":"+str(ttsMIC.get_chrCount())+"\r"+ttsMIC.get_progress_result(),text_color='white')
             
             if event in ('Exit', None):
                 log_chat = self.window['-M_BOX_2-'].get()
