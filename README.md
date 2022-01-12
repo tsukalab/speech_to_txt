@@ -15,11 +15,11 @@ AUIDO_FILENAME = "test.wav"　　
 同じく[GCPのサンプルコード](https://cloud.google.com/speech-to-text/docs/streaming-recognize?hl=ja)
 内の「音声ストリームでストリーミング音声認識を実行する」のコードを改変したものになります．  
 
-このコードは任意の入力デバイスをストーリーミング音声認識することができます．  
-入力デバイスの設定は`DEVICE_INDEX`で制御できます．（defolt：0）
+このコードは任意の入力デバイスを設定し音声認識することができます．  
+入力デバイスの設定は`DEVICE_INDEX`で制御しています．（defolt：0）
 
 実行すると`【オーディオデバイス一覧】`が表示されたのち，現在接続されている入力デバイスが`接続デバイス【indexhoge:hogehoge】`として表示されます．  
-その後`【何か話してください】`と表示された後，音声認識が開始します．<br>
+その後`【何か話してください】`と表示された後，音声認識をはじめることができます．<br>
 
 実行例
 ~~~
@@ -36,6 +36,7 @@ index6:hogehoge
 【何か話してください】
 ~~~~~
 
+<br><br><br>
 ## speech_to_text_sample_toSaveAudio.py
 単体で実行することができます．<br>
 挙動は[speech_to_text_sample_streming.py](###speech_to_text_sample_streming.py)とほぼ一緒ですが，認識された音声を録音できます．<br>
@@ -58,6 +59,9 @@ AUDIO_DIRECTORY = "../Audio_GUI/"
 AUDIO_DIRECTORY = ""
 ~~~
 
+
+
+<br><br><br>
 ## main_sst_gui.py
 メインファイルです．<br>
 
@@ -96,6 +100,8 @@ Startボタンを押すと設定したで入力デバイスで認識が始まり
 
 その他にボタンなどがありますが，複雑なので一度説明を終わります．
 
+
+<br><br><br>
 ## mecab_txt.py
 現在はどのファイルとも依存関係は無いので無視して大丈夫です．<br>
 ライブラリのインポートや設定に書き換えが必要になりますが，単体で実行できます．<br>
@@ -108,6 +114,7 @@ Startボタンを押すと設定したで入力デバイスで認識が始まり
 ~~~~~
 
 
+<br><br><br>
 ## 「SAMPLE_CODE」
 このディレクトリは無視してください
 
