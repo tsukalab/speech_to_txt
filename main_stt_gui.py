@@ -66,7 +66,8 @@ class Draw_window(object):
     # カラム設定
         col1 =  [   [sg.Button('Start', size=(10,2))],
                     [sg.Button('Stop', size=(10,2))],
-                    [sg.Button('Select Save', size=(10,2))]
+                    [sg.Button('Select Save', size=(10,2))],
+                    [sg.Button('Load', size=(10,2))]
                 ]
         col2 =  [   [
                     # 認識結果リアルタイム表示用のテキストボックス
@@ -175,7 +176,7 @@ class Draw_window(object):
             self._ax.pie([100],colors="C4", radius=0.5)
             self._fig_agg_4.draw()
             
-            # 折れ線グラフに発話数のデータを追加する関数
+        # 折れ線グラフに発話数のデータを追加する関数
             def append_graph_data(mic = 0, MIXER = 0):
                 if mic!=0 or MIXER != 0:
                     self._xs.append(self._xs[len(self._xs)-1] + 0.5)
@@ -192,7 +193,7 @@ class Draw_window(object):
                     else:
                         self._ys.append(0)  # 初期値
 
-            # 右側のテキストボックスにログに表示する際，テキストを形態素->名詞・動詞テキストカラーを変えてログ表示（読みづらい）
+        # 右側のテキストボックスにログに表示する際，テキストを形態素->名詞・動詞テキストカラーを変えてログ表示（読みづらい）
             def change_text_color(ttsObject):
                 mcbtxt = mcb.mecab_t(ttsObject.get_result())
                 self.window['-M_BOX_2-'].print(ttsObject.get_deviceName()+":"+ttsObject.get_date())
@@ -204,7 +205,7 @@ class Draw_window(object):
                     else:
                         self.window['-M_BOX_2-'].print(result,text_color='black',end='')
                 self.window['-M_BOX_2-'].print("\r")
-
+        #イベント設定
             if event == sg.WIN_CLOSED:
                 break
             elif event == 'Start':# スタートボタンを押したら
@@ -236,16 +237,44 @@ class Draw_window(object):
                 try:
                 # Tkinterの場合 .TKText 経由でアクセス
                     selected = self.window["-M_BOX_2-"].TKText.selection_get()
+                    # now.strftime('%Y-%m-%d-%H.%M.%S')
+                    self.window['-M_BOX_3-'].print(now.strftime('%H.%M')+selected, text_color='k')
+                    print(selected)
+                    # SAVE LOGの保存（簡易）
+                    log_chat = self.window['-M_BOX_3-'].get()
+                    # f = open(log_folder+ttsMIC.get_date()[:10]+'Select_log_chat.txt', 'w')
+                    f = open(log_folder+now.strftime('%m-%d')+'Select_log_chat.txt', 'w')
+                    f.write(log_chat)
+                    f.close()
                 except tk._tkinter.TclError:
-                    pass # 選択範囲がない場合のエラーを無視
-                # now.strftime('%Y-%m-%d-%H.%M.%S')
-                self.window['-M_BOX_3-'].print(now.strftime('%H.%M')+selected, text_color='k')
-                print(selected)
-                # SAVE LOGの保存（簡易）
-                log_chat = self.window['-M_BOX_3-'].get()
-                f = open(log_folder+'Select_log_chat.txt', 'w')
-                f.write(log_chat)
-                f.close()
+                    sg.popup('テキストが選択されていません')
+                    # pass # 選択範囲がない場合のエラーを無視
+                
+            elif event == 'Load':
+                text = sg.popup_get_file('ファイルを指定してください。')
+                # sg.popup('結果', '選択されたファイルは、以下です。', text)
+                # file = open(log_folder+"log.csv", 'r')
+                print()
+                try:
+                    file = open(text, 'r')
+                    data = csv.reader(file)
+                    load_txt = ""
+                    for row in data:
+                        if int(row[6]) ==0:#MIXER
+                            "MIXSER"+ row[2][:-4]
+                            # load_txt += "MIXSER: "+row[2][:19]+'\n'+row[3]
+                            self.window['-M_BOX_2-'].print( "MIXSER: "+row[2][:19]+'\n'+row[3], text_color='#008080')
+                        else:
+                            load_txt +="MIC: "+row[2][:19]+'\n'+row[3]
+                            self.window['-M_BOX_2-'].print("MIC: "+row[2][:19]+'\n'+row[3], text_color='#fafad2')
+
+                        load_txt+='\n'
+        
+                    file.close()
+                except:
+                    sg.popup('指定されたファイルはありません', text)
+                    # print("ad")
+
 
             else:# それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果確定後であれば右側のテキストボックスに情報を追加する
                 append_graph_data(int(ttsMIC.get_monoChrCount()), int(ttsMIXER.get_monoChrCount()))
@@ -257,10 +286,11 @@ class Draw_window(object):
                             self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
                     # change_text_color(ttsMIC)
                     ttsObject.set_condition() #待機状態に戻す
-                    audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = log_folder+'log_chat.csv'
+                    audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = log_folder+datetime.datetime.now().strftime('%Y-%m-%d')+'log.csv'
                     # 再度認識スレッドを立てる
                     threading.Thread(target=ttsObject.start_recognize, daemon=True).start()
-                    self._data[1]=self._data[1]+ttsObject.get_chrCount()
+                    self._data[ttsObject.get_deviceName_or_number(1)]=self._data[ttsObject.get_deviceName_or_number(1)]+ttsObject.get_chrCount()
+                    
                     # LOGの保存（CSV）
                     addwriteCsvTwoContents(audiofilename,  result, num, filename, ttsObject.get_deviceName_or_number(1))
                 

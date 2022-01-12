@@ -3,14 +3,12 @@ import datetime
 
 import re
 import sys
-from PySimpleGUI.PySimpleGUI import RealtimeButton, Tree
 
 from google.cloud import speech_v1 as speech
 
 import pyaudio
 import queue
 import wave
-import time
 from pykakasi import kakasi
 
 # Bfolder = "F:/wavtomo/wav_Befor_Recognize/"
@@ -50,6 +48,10 @@ class _MicrophoneStream(object):
 
     def __enter__(self):
         self._audio_interface = pyaudio.PyAudio()
+        # 接続されたデバイスの表示
+        for x in range(0, self._audio_interface.get_device_count()):
+            if x==self._DEVICE_INDEX:
+                print("接続デバイス【index"+str(x)+":"+self._audio_interface.get_device_info_by_index(x).get("name")+"】")
         self._audio_stream = self._audio_interface.open(
             format=pyaudio.paInt16,
             # The API currently only supports 1-channel (mono) audio
@@ -65,13 +67,12 @@ class _MicrophoneStream(object):
             # overflow while the calling thread makes network requests, etc.
             stream_callback=self._fill_buffer,
         )
-
         self.closed = False
 
         return self
 
     def __exit__(self, type, value, traceback):
-        print("AudioSaveStart: "+self._WAVE_OUTPUT_FILENAME)
+        print("Start Save Audio: "+self._WAVE_OUTPUT_FILENAME)
         self._audio_stream.stop_stream()
         self._audio_stream.close()
         self.closed = True
@@ -89,7 +90,7 @@ class _MicrophoneStream(object):
         wf.writeframes(b''.join(self._frames))
         wf.close()
         # """
-        print("SAVEEnd")
+        print("End Save Audio")
 
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
@@ -124,17 +125,17 @@ class _MicrophoneStream(object):
     def _set_audio_file_path(self, file_name):
         self._WAVE_OUTPUT_FILENAME = file_name
 
-    def _clear_audio_file(self):
+    def clear_audio_file(self):
         # 発話前の無音部分をカットしておく
         if(len(self._frames)-7>0):
             del self._frames[:len(self._frames)-7]
         else:
             self._frames.clear()
         
-    def _print_deviceList(self):# 音声デバイスを一覧表示する
+    def print_connected_deviceList(self):# 音声デバイスを一覧表示する
         audio = pyaudio.PyAudio()
         print("【オーディオデバイス一覧】")
-        for x in range(0, audio.get_device_count()): 
+        for x in range(0, audio.get_device_count()):
             print("index"+str(x)+":"+audio.get_device_info_by_index(x).get("name"))
 
 class Listen_print(object):
@@ -176,8 +177,6 @@ class Listen_print(object):
                 speech.StreamingRecognizeRequest(audio_content=content)
                 for content in audio_generator
             )
-            # 使用可能なデバイスの表示
-            # stream._print_deviceList()
             print("【何か話してください】")
             try:
                 responses = client.streaming_recognize(config=_streaming_config, requests=requests)
@@ -200,10 +199,10 @@ class Listen_print(object):
 
                     if not result.is_final:                                               
                         # print("transcript" + transcript)
-                        # sys.stdout.write(transcript + overwrite_chars + "\r")
-                        # sys.stdout.flush()
-                        if(count==0): # 発話時の時刻取得                       
-                            stream._clear_audio_file()   
+                        sys.stdout.write(transcript + overwrite_chars + "\r")
+                        sys.stdout.flush()
+                        if(count==0): # 発話開始時のみ実行する
+                            stream.clear_audio_file()   
                             now = datetime.datetime.now()
                             AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
                             self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
@@ -221,6 +220,7 @@ class Listen_print(object):
 
                     else:
                         # 認識結果が確定したら
+                        print("確定認識結果："+transcript + overwrite_chars)
                         self._return_result = transcript + overwrite_chars
                         self._progress_result = transcript + overwrite_chars
                         kakasi.setMode('J', 'H') #漢字からひらがなに変換
@@ -229,6 +229,7 @@ class Listen_print(object):
                         self._chrCount += len(conv.do(transcript))
                         # 認識文字数を保存
                         self._monoChrCount = len(conv.do(transcript))
+                        
                         break
                         if re.search(r"\b(exit|quit)\b", transcript, re.I):
                             print("Exiting..")
@@ -239,8 +240,9 @@ class Listen_print(object):
                 print("Exception occurred - {}".format(str(e)))
                 AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
                 stream._set_audio_file_path(AUDIO_FILE_PATH)
-                self._return_result = "【何か話してください】"
-                self._progress_result = "【何か話してください】"
+                self._return_result = "【sst内に問題が発生しました】"
+                self._progress_result = "【sst内に問題が発生しました】"
+
         self.condition = True
 
     def get_result(self):# 認識確定した文字起こしデータ
@@ -263,6 +265,13 @@ class Listen_print(object):
     def get_monoChrCount(self):#棒グラフ用：都度発話数の取り出し用
         return self._monoChrCount
 if __name__ == "__main__":
-    a = Listen_print(2,"mic")
+    # Listen_print()は 以下のどちらかを使用
+        # deviceNAMEが"mixer"ならdeviceNumber = 0
+        # deviceNAMEが"mic"ならdeviceNumber = 1
+    # deviceindex=1
+    # 使用可能なデバイスの表示するには以下2行のコメントアウトを消す
+    b=_MicrophoneStream(RATE, CHUNK, device_index = 0)
+    b.print_connected_deviceList()
+    a = Listen_print(deviceindex = 1, deviceNAME = "mixer", deviceNumber = 0)
     a.start_recognize()
     

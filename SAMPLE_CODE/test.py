@@ -1,12 +1,6 @@
-from pykakasi import kakasi
 
-kakasi = kakasi()
-kakasi.setMode('J', 'H') #漢字からひらがなに変換
-kakasi.setMode("K", "H") #カタカナからひらがなに変換
-conv = kakasi.getConverter()
+import PySimpleGUI as sg
 
-str = '何してんのどうも皆さんの生活23日目棚どうぶつの森全然やってな'
-a = (1,0)
-print(a)
+text = sg.popup_get_file('ファイルを指定してください。')
 
-print(conv.do(str))
+sg.popup('結果', '選択されたファイルは、以下です。', text)

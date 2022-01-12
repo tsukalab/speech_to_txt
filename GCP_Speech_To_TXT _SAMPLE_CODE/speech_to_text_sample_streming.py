@@ -12,10 +12,10 @@ import queue
 RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms
 # 実行するとデバイスインデックスがプリントされるので，
-# 自身の実行環境で以下のインデックス番号を変更すると良い(デフォルトは1)
-# おそらくだが「既定のマイク」->　DEVICE_INDEX = 1
+# 自身の実行環境で以下のインデックス番号を変更すると良い(デフォルトは0)
+# おそらくだが「既定のマイク」->　DEVICE_INDEX = 0 or 1
 # 「既定の通信マイク」->　DEVICE_INDEX = 2
-DEVICE_INDEX = 2
+DEVICE_INDEX = 0
 
 class MicrophoneStream(object):
     """Opens a recording stream as a generator yielding the audio chunks."""
@@ -28,9 +28,14 @@ class MicrophoneStream(object):
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
         self.closed = True
+        self.print_deviceList()
 
     def __enter__(self):
         self._audio_interface = pyaudio.PyAudio()
+        # 接続されたデバイスの表示
+        for x in range(0, self._audio_interface.get_device_count()):
+            if x==self._deviceindex:
+                print("接続デバイス【index"+str(x)+":"+self._audio_interface.get_device_info_by_index(x).get("name")+"】")
         self._audio_stream = self._audio_interface.open(
             format=pyaudio.paInt16,
             # The API currently only supports 1-channel (mono) audio
@@ -167,7 +172,6 @@ def main():
     )
 
     with MicrophoneStream(RATE, CHUNK, DEVICE_INDEX) as stream:
-        stream.print_deviceList()
         audio_generator = stream.generator()
         requests = (
             speech.StreamingRecognizeRequest(audio_content=content)
