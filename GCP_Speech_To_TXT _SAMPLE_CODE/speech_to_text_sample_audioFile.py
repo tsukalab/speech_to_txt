@@ -1,3 +1,6 @@
+# 認識させたい任意のAUDIOファイル名に書き換えて実行する
+AUIDO_FILENAME = "test.wav"
+
 def transcribe_streaming(stream_file):
     """Streams transcription of the given audio file."""
     import io
@@ -43,4 +46,5 @@ def transcribe_streaming(stream_file):
                 print("Confidence: {}".format(alternative.confidence))
                 print(u"Transcript: {}".format(alternative.transcript))
 
-transcribe_streaming("test_konchiwa.wav")
+if __name__ == "__main__":
+    transcribe_streaming(AUIDO_FILENAME)
