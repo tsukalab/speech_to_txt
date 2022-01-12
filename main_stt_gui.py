@@ -7,24 +7,19 @@ from matplotlib.figure import Figure
 import matplotlib.patches as patch
 import matplotlib.pyplot as plt
 import numpy as np
-import PySimpleGUI as sg
+import csv
 import time
 import datetime
+
+import PySimpleGUI as sg
 
 import speech_to_text_sample_toSaveAudio as stt
 import mecab_txt as mcb
 
-import csv
-
 # 一階層上にLOGを保存
-log_folder = "../LOG_GUI/"
-
-# Audio recording parameters
-RATE = 16000
-CHUNK = int(RATE / 10)  # 100ms
-DEVICE_INDEX = 1
-# pyAudiosample
-WAVE_OUTPUT_FILENAME = "./speech_to_text/text_output.wav"
+LOG_DIRECTORY = "../LOG_GUI/"
+MIC_INDEX = 2
+MIXER_INDEX = 1
 
 # CSV形式でLOG保存関数
 #引数(AUDIO_FILE_NAME:nameFormat【2021-01-01-10.10.55】, ResultList:認識結果, num:認識結果文字数, saveFileName:保存するファイルの名前, deviceNUM :MIXER=0,MIC=1)
@@ -147,8 +142,9 @@ class Draw_window(object):
         
         print("window")
         #別ファイルの GCP Speech to Text を実行する関数の呼び出し
-        ttsMIC = stt.Listen_print(2,"MIC", 1)
-        ttsMIXER = stt.Listen_print(1,"MIXER",0)
+
+        ttsMIC = stt.Listen_print(MIC_INDEX,"MIC", 1)
+        ttsMIXER = stt.Listen_print(MIXER_INDEX,"MIXER",0)
         # self._ax5.set_xlim(0, 100)
         while True:
             event, values = self.window.read(timeout=10)
@@ -225,7 +221,7 @@ class Draw_window(object):
             elif event == 'Stop':
                 # テキスト形式でログの保存（使っていない）
                 log_chat = self.window['-M_BOX_2-'].get()
-                f = open(log_folder+ttsMIC.get_date()+'log_chat.txt', 'w')
+                f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
                 f.write(log_chat)
                 f.close()
                 # 両マイクで認識をスレッドで終了させる（未実装）
@@ -242,8 +238,8 @@ class Draw_window(object):
                     print(selected)
                     # SAVE LOGの保存（簡易）
                     log_chat = self.window['-M_BOX_3-'].get()
-                    # f = open(log_folder+ttsMIC.get_date()[:10]+'Select_log_chat.txt', 'w')
-                    f = open(log_folder+now.strftime('%m-%d')+'Select_log_chat.txt', 'w')
+                    # f = open(LOG_DIRECTORY+ttsMIC.get_date()[:10]+'Select_log_chat.txt', 'w')
+                    f = open(LOG_DIRECTORY+now.strftime('%m-%d')+'Select_log_chat.txt', 'w')
                     f.write(log_chat)
                     f.close()
                 except tk._tkinter.TclError:
@@ -253,7 +249,7 @@ class Draw_window(object):
             elif event == 'Load':
                 text = sg.popup_get_file('ファイルを指定してください。')
                 # sg.popup('結果', '選択されたファイルは、以下です。', text)
-                # file = open(log_folder+"log.csv", 'r')
+                # file = open(LOG_DIRECTORY+"log.csv", 'r')
                 print()
                 try:
                     file = open(text, 'r')
@@ -286,7 +282,7 @@ class Draw_window(object):
                             self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
                     # change_text_color(ttsMIC)
                     ttsObject.set_condition() #待機状態に戻す
-                    audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = log_folder+datetime.datetime.now().strftime('%Y-%m-%d')+'log.csv'
+                    audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = LOG_DIRECTORY+datetime.datetime.now().strftime('%Y-%m-%d')+'log.csv'
                     # 再度認識スレッドを立てる
                     threading.Thread(target=ttsObject.start_recognize, daemon=True).start()
                     self._data[ttsObject.get_deviceName_or_number(1)]=self._data[ttsObject.get_deviceName_or_number(1)]+ttsObject.get_chrCount()
@@ -304,7 +300,7 @@ class Draw_window(object):
             
             if event in ('Exit', None):
                 log_chat = self.window['-M_BOX_2-'].get()
-                f = open(log_folder+ttsMIC.get_date()+'log_chat.txt', 'w')
+                f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
                 f.write(log_chat)
                 f.close()
                 # t1.sleeo()

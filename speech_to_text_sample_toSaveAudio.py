@@ -15,7 +15,8 @@ from pykakasi import kakasi
 # Afloder = "F:/wavtomo/wav_After_Recognize/"
 
 # 一階層上にオーディオを保存
-audio_folder = "../Audio_GUI/"
+AUDIO_DIRECTORY = "../Audio_GUI/"
+DEVICE_INDEX  = 2
 
 # 使用可能なデバイスインデックスがプリントする方法
 # line180e前後の stream._print_deviceList() のコメントアウトを外す
@@ -38,7 +39,7 @@ class _MicrophoneStream(object):
         self._rate = rate 
         self._chunk = chunk
         self._DEVICE_INDEX  = device_index
-        self._WAVE_OUTPUT_FILENAME = audio_folder+"output.wav"
+        self._WAVE_OUTPUT_FILENAME = AUDIO_DIRECTORY+"output.wav"
 
         # Create a thread-safe buffer of audio data
         self._buff = queue.Queue()
@@ -207,7 +208,7 @@ class Listen_print(object):
                             AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
                             self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
                             # AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
-                            AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
+                            AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
                             stream._set_audio_file_path(AUDIO_FILE_PATH)
                             print(AUDIO_FILE_PATH)
                             count+=1
@@ -238,7 +239,7 @@ class Listen_print(object):
                         num_chars_printed = 0        
             except BaseException as e:
                 print("Exception occurred - {}".format(str(e)))
-                AUDIO_FILE_PATH = audio_folder+AUDIO_FILE_NAME
+                AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
                 stream._set_audio_file_path(AUDIO_FILE_PATH)
                 self._return_result = "【sst内に問題が発生しました】"
                 self._progress_result = "【sst内に問題が発生しました】"
@@ -270,8 +271,8 @@ if __name__ == "__main__":
         # deviceNAMEが"mic"ならdeviceNumber = 1
     # deviceindex=1
     # 使用可能なデバイスの表示するには以下2行のコメントアウトを消す
-    b=_MicrophoneStream(RATE, CHUNK, device_index = 0)
+    b=_MicrophoneStream(RATE, CHUNK, device_index = DEVICE_INDEX)
     b.print_connected_deviceList()
-    a = Listen_print(deviceindex = 1, deviceNAME = "mixer", deviceNumber = 0)
+    a = Listen_print(deviceindex = DEVICE_INDEX , deviceNAME = "deviceNAME", deviceNumber = 0)
     a.start_recognize()
     

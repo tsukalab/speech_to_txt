@@ -1,10 +1,6 @@
 import MeCab
-import sys
 from sys import argv
-import time
-import csv
 
-inname=["face1direct.txt","face2direct.txt","face3direct.txt","face1whole.txt","face2whole.txt","face3whole.txt","side1direct.txt","side2direct.txt","side3direct.txt","side1whole.txt","side2whole.txt","side3whole.txt","scenario1all.txt","scenario2all.txt","scenario3all.txt"]
 #引数の取得
 # input_file_name="face1direct.txt"
 def mecab_t(text):
@@ -47,3 +43,8 @@ def mecab_t(text):
             else:
                 hinshiList.append(["その他", feature[0]])
     return hinshiList
+
+if __name__ == "__main__":
+    text = input()
+    print(mecab_t(text))
+
