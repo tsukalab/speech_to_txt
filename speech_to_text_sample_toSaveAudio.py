@@ -3,6 +3,7 @@ import datetime
 
 import re
 import sys
+import threading
 
 from google.cloud import speech_v1 as speech
 
@@ -16,7 +17,8 @@ from pykakasi import kakasi
 
 # 一階層上にオーディオを保存
 AUDIO_DIRECTORY = "../Audio_GUI/"
-DEVICE_INDEX  = 2
+AUDIO_DIRECTORY = "F:/wavtomo/wav_Befor_Recognize/"
+DEVICE_INDEX  = 1
 
 # 使用可能なデバイスインデックスがプリントする方法
 # line180e前後の stream._print_deviceList() のコメントアウトを外す
@@ -73,26 +75,31 @@ class _MicrophoneStream(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        print("Start Save Audio: "+self._WAVE_OUTPUT_FILENAME)
-        self._audio_stream.stop_stream()
-        self._audio_stream.close()
-        self.closed = True
-        # Signal the generator to terminate so that the client's
-        # streaming_recognize method will not block the process termination.
-        self._buff.put(None)
-        self._audio_interface.terminate()
+        # マイクロフォンストリーム終了したら実行される
+        def _save_audio():
+            print("Start Save Audio: "+self._WAVE_OUTPUT_FILENAME)
+            self._audio_stream.stop_stream()
+            self._audio_stream.close()
+            self.closed = True
+            # Signal the generator to terminate so that the client's
+            # streaming_recognize method will not block the process termination.
+            self._buff.put(None)
+            self._audio_interface.terminate()
 
-        # save wav failes
-        # """
-        wf = wave.open(self._WAVE_OUTPUT_FILENAME, 'wb')
-        wf.setnchannels(1)
-        wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(self._frames))
-        wf.close()
-        # """
-        print("End Save Audio")
-
+            # save wav failes
+            # """
+            wf = wave.open(self._WAVE_OUTPUT_FILENAME, 'wb')
+            wf.setnchannels(1)
+            wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
+            wf.setframerate(RATE)
+            wf.writeframes(b''.join(self._frames))
+            wf.close()
+            # """
+            print("End Save Audio")
+        _save_audio()
+        # t1 = threading.Thread(target=_save_audio, daemon=True)
+        # t1.start()
+            
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
         self._buff.put(in_data)
@@ -146,10 +153,11 @@ class Listen_print(object):
         self._return_result = "【スタートボタンを押すと認識がはじまります】"
         self._date = "00/00/00"
         self._progress_result = "【スタートボタンを押すと認識がはじまります】"
-        self.condition = False
         self._chrCount = 0
-        self._monoChrCount = 0
-
+        self._monoChrCount = 0      
+        self.condition = False 
+        self.stt_status  = True #sstのwhile抜ける用
+    
     def start_recognize(self):
         # See http://g.co/cloud/speech/docs/languages
         # for a list of supported languages.
@@ -169,82 +177,109 @@ class Listen_print(object):
 
         now = datetime.datetime.now()
         AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
+        
+        while True:
+            with _MicrophoneStream(RATE, CHUNK, self._DEVICE_INDEX) as stream:
+                num_chars_printed = 0
+                audio_generator = stream.generator()
+                requests = (
+                    speech.StreamingRecognizeRequest(audio_content=content)
+                    for content in audio_generator
+                )
+                print("【何か話してください】")
+                try:
+                    # 認識が開始された瞬間1回だけ実行される
+                    responses = client.streaming_recognize(config=_streaming_config, requests=requests)
+                    stream.clear_audio_file()   
+                    now = datetime.datetime.now()
+                    AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
+                    self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
+                    # AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
+                    AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
+                    stream._set_audio_file_path(AUDIO_FILE_PATH)
 
-        with _MicrophoneStream(RATE, CHUNK, self._DEVICE_INDEX) as stream:
-            count = 0
-            num_chars_printed = 0
-            audio_generator = stream.generator()
-            requests = (
-                speech.StreamingRecognizeRequest(audio_content=content)
-                for content in audio_generator
-            )
-            print("【何か話してください】")
-            try:
-                responses = client.streaming_recognize(config=_streaming_config, requests=requests)
+                    print(AUDIO_FILE_PATH)
 
-                for response in responses:
-                                            
-                    if not response.results:                        
-                        continue
-                    # The `results` list is consecutive. For streaming, we only care about
-                    # the first result being considered, since once it's `is_final`, it
-                    # moves on to considering the next utterance.
-                    result = response.results[0]
-                    if not result.alternatives:                        
-                        continue
-
-                    # Display the transcription of the top alternative.
-                    transcript = result.alternatives[0].transcript
-                    overwrite_chars = " " * (num_chars_printed - len(transcript))
-                    # print("overwrite_chars"+overwrite_chars)
-
-                    if not result.is_final:                                               
-                        # print("transcript" + transcript)
-                        sys.stdout.write(transcript + overwrite_chars + "\r")
-                        sys.stdout.flush()
-                        if(count==0): # 発話開始時のみ実行する
-                            stream.clear_audio_file()   
-                            now = datetime.datetime.now()
-                            AUDIO_FILE_NAME = now.strftime('%Y-%m-%d-%H.%M.%S')+self._DEVICENAME_AND_NUMBER[0]+".wav"
-                            self._date = now.strftime('%Y-%m-%d-%H.%M.%S')
-                            # AUDIO_FILE_PATH = Bfolder+AUDIO_FILE_NAME
-                            AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
-                            stream._set_audio_file_path(AUDIO_FILE_PATH)
-                            print(AUDIO_FILE_PATH)
-                            count+=1
-                        
-                        num_chars_printed = len(transcript)
-                        # txtlist = textwrap.wrap(transcript, int(ww/w))
-                        # print(txtlist)
-                        self._progress_result = transcript
-                        self._monoChrCount = len(transcript)
-
-                    else:
-                        # 認識結果が確定したら
-                        print("確定認識結果："+transcript + overwrite_chars)
-                        self._return_result = transcript + overwrite_chars
-                        self._progress_result = transcript + overwrite_chars
-                        kakasi.setMode('J', 'H') #漢字からひらがなに変換
-                        # kaka.setMode("K", "H") #カタカナからひらがなに変換
-                        conv = kakasi.getConverter()
-                        self._chrCount += len(conv.do(transcript))
-                        # 認識文字数を保存
-                        self._monoChrCount = len(conv.do(transcript))
-                        
-                        break
-                        if re.search(r"\b(exit|quit)\b", transcript, re.I):
-                            print("Exiting..")
+                    count=0 
+                    for response in responses:
+                        if (self.stt_status==False):
                             break
+                        count+=1
+                        
+                        # print(self._DEVICE_INDEX +  count) 
+                        # print("progress"+self._progress_result) 
+                        # print("retrun:"+self._return_result ) 
 
-                        num_chars_printed = 0        
-            except BaseException as e:
-                print("Exception occurred - {}".format(str(e)))
-                AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
-                stream._set_audio_file_path(AUDIO_FILE_PATH)
-                self._return_result = "【sst内に問題が発生しました】"
-                self._progress_result = "【sst内に問題が発生しました】"
+                        if not response.results:                       
+                            continue
+                        # The `results` list is consecutive. For streaming, we only care about
+                        # the first result being considered, since once it's `is_final`, it
+                        # moves on to considering the next utterance.
+                        result = response.results[0]
+                        if not result.alternatives:  
+                            continue
 
-        self.condition = True
+                        # Display the transcription of the top alternative.
+                        transcript = result.alternatives[0].transcript
+                        overwrite_chars = " " * (num_chars_printed - len(transcript))
+                        # print("overwrite_chars"+overwrite_chars)
+
+                        if not result.is_final:                                           
+                            # print("transcript" + transcript)
+                            # sys.stdout.write(transcript + overwrite_chars + "\r")
+                            # sys.stdout.flush()
+                            num_chars_printed = len(transcript)
+                            # txtlist = textwrap.wrap(transcript, int(ww/w))
+                            # print(txtlist)
+                            self._progress_result = transcript
+                            self._monoChrCount = len(transcript)
+                        else:
+                            # 認識結果が確定した瞬間一度だけ実行される
+                            self.condition = True
+                            print("確定認識結果："+transcript + overwrite_chars)
+                            self._return_result = transcript + overwrite_chars
+                            self._progress_result = transcript + overwrite_chars
+                            kakasi.setMode('J', 'H') #漢字からひらがなに変換
+                            # kaka.setMode("K", "H") #カタカナからひらがなに変換
+                            conv = kakasi.getConverter()
+                            self._chrCount += len(conv.do(transcript))
+                            # 認識文字数を保存
+                            self._monoChrCount = len(conv.do(transcript))
+                                
+                            break
+                            if re.search(r"\b(exit|quit)\b", transcript, re.I):
+                                print("Exiting..")
+                                break
+
+                            num_chars_printed = 0        
+                except BaseException as e:
+                    print("Exception occurred - {}".format(str(e)))
+                    AUDIO_FILE_PATH = AUDIO_DIRECTORY+AUDIO_FILE_NAME
+                    stream._set_audio_file_path(AUDIO_FILE_PATH)
+                    self._return_result = ""
+                    self._progress_result = ""
+            #認識を止める  
+            if (self.stt_status==False):
+                self._return_result = "【☆スタートボタンを押すと認識がはじまります】"
+                self._progress_result = "【☆スタートボタンを押すと認識がはじまります】"
+                self.condition = True
+                print("確定認識結果："+transcript + overwrite_chars)
+                self._return_result = transcript + overwrite_chars
+                self._progress_result = transcript + overwrite_chars
+                kakasi.setMode('J', 'H') #漢字からひらがなに変換
+                # kaka.setMode("K", "H") #カタカナからひらがなに変換
+                conv = kakasi.getConverter()
+                self._chrCount += len(conv.do(transcript))
+                # 認識文字数を保存
+                self._monoChrCount = len(conv.do(transcript))
+                break
+    def init_object(self):
+        self._monoChrCount = 0
+        self._progress_result = "【☆話してください】"
+        # self._return_result = "【☆☆はじまり】"
+        self._date = "00/00/00"
+        self.condition = False
+        self.stt_status = True
 
     def get_result(self):# 認識確定した文字起こしデータ
         return self._return_result
@@ -256,15 +291,19 @@ class Listen_print(object):
         return self._date
     def get_condition(self):
         return self.condition
-    def set_condition(self):
-        self.condition = False
+    def set_condition(self,bool):
+        self.condition = bool
         self._monoChrCount = 0
     def get_deviceName_or_number(self,int):#デバイスの名前の取り出し：MIC or MIXER
         return self._DEVICENAME_AND_NUMBER[int]
     def get_chrCount(self):#円グラフ用：総発話文字数の取り出し用
         return self._chrCount
+    def set_chrCount(self, chrCount):#円グラフ用：総発話文字数の取り出し用
+        self._chrCount = chrCount
     def get_monoChrCount(self):#棒グラフ用：都度発話数の取り出し用
         return self._monoChrCount
+    def set_stt_status(self, bool):#
+        self.stt_status = bool
 if __name__ == "__main__":
     # Listen_print()は 以下のどちらかを使用
         # deviceNAMEが"mixer"ならdeviceNumber = 0
@@ -275,4 +314,5 @@ if __name__ == "__main__":
     b.print_connected_deviceList()
     a = Listen_print(deviceindex = DEVICE_INDEX , deviceNAME = "deviceNAME", deviceNumber = 0)
     a.start_recognize()
+    print("aaaaaaaaaaaaaaaaaasaaa")
     

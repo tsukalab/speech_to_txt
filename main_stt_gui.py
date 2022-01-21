@@ -17,6 +17,7 @@ import speech_to_text_sample_toSaveAudio as stt
 import mecab_txt as mcb
 
 # 一階層上にLOGを保存
+# Bfolder = "F:/wavtomo/wav_Befor_Recognize/"
 LOG_DIRECTORY = "../LOG_GUI/"
 MIC_INDEX = 2
 MIXER_INDEX = 1
@@ -206,6 +207,8 @@ class Draw_window(object):
                 break
             elif event == 'Start':# スタートボタンを押したら
                 # 両マイクで認識をスレッドで開始させる
+                ttsMIC.init_object()
+                ttsMIXER.init_object()
                 print("Start1")
                 t1 = threading.Thread(target=ttsMIC.start_recognize, daemon=True)
                 t1.start()
@@ -219,11 +222,14 @@ class Draw_window(object):
                 message = values[event]
                 sg.popup_auto_close(message)
             elif event == 'Stop':
+                ttsMIXER.set_stt_status(False)
+                ttsMIC.set_stt_status(False)
                 # テキスト形式でログの保存（使っていない）
-                log_chat = self.window['-M_BOX_2-'].get()
-                f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
-                f.write(log_chat)
-                f.close()
+
+                # log_chat = self.window['-M_BOX_2-'].get()
+                # f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
+                # f.write(log_chat)
+                # f.close()
                 # 両マイクで認識をスレッドで終了させる（未実装）
                 # t1.sleep()
                 # t2.sleep()
@@ -255,17 +261,24 @@ class Draw_window(object):
                     file = open(text, 'r')
                     data = csv.reader(file)
                     load_txt = ""
+                    MIXChr = 0
+                    MICChr = 0
                     for row in data:
                         if int(row[6]) ==0:#MIXER
                             "MIXSER"+ row[2][:-4]
                             # load_txt += "MIXSER: "+row[2][:19]+'\n'+row[3]
                             self.window['-M_BOX_2-'].print( "MIXSER: "+row[2][:19]+'\n'+row[3], text_color='#008080')
+                            MIXChr += int(row[5])
                         else:
                             load_txt +="MIC: "+row[2][:19]+'\n'+row[3]
                             self.window['-M_BOX_2-'].print("MIC: "+row[2][:19]+'\n'+row[3], text_color='#fafad2')
+                            MICChr += int(row[5])
 
                         load_txt+='\n'
-        
+                    ttsMIXER.set_chrCount(MIXChr)
+                    ttsMIC.set_chrCount(MICChr)
+                    self._data[0]+=ttsMIXER.get_chrCount()
+                    self._data[1]+=ttsMIC.get_chrCount()
                     file.close()
                 except:
                     sg.popup('指定されたファイルはありません', text)
@@ -273,22 +286,21 @@ class Draw_window(object):
 
 
             else:# それぞれの認識時の状態（待機か認識結果出力後か）を判断し，認識結果確定後であれば右側のテキストボックスに情報を追加する
+                #折れ線グラフのデータ追加
                 append_graph_data(int(ttsMIC.get_monoChrCount()), int(ttsMIXER.get_monoChrCount()))
                 
                 def display_result_on_textbox(ttsObject, text_color):
-                    if(ttsObject.get_result()!="【スタートボタンを押すと認識がはじまります】"):
-                        ttsObject.set_progress_result("【何か話してください】")
-                        if(ttsObject.get_result()!="【何か話してください】"):
-                            self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
-                    # change_text_color(ttsMIC)
-                    ttsObject.set_condition() #待機状態に戻す
                     audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = LOG_DIRECTORY+datetime.datetime.now().strftime('%Y-%m-%d')+'log.csv'
+                    self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
+                    # change_text_color(ttsMIC)
                     # 再度認識スレッドを立てる
-                    threading.Thread(target=ttsObject.start_recognize, daemon=True).start()
+                    # threading.Thread(target=ttsObject.start_recognize, daemon=True).start()
+                    # time.sleep(3)#これを入れないとpysimpleGUIのWindowがクラッシュする
                     self._data[ttsObject.get_deviceName_or_number(1)]=self._data[ttsObject.get_deviceName_or_number(1)]+ttsObject.get_chrCount()
                     
                     # LOGの保存（CSV）
                     addwriteCsvTwoContents(audiofilename,  result, num, filename, ttsObject.get_deviceName_or_number(1))
+                    ttsObject.init_object()
                 
                 if(ttsMIC.get_condition()):
                     display_result_on_textbox(ttsMIC,'#fafad2')            

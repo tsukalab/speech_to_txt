@@ -140,7 +140,7 @@ def on_closing():
 
 def work1():
     global var, tflag
-    var.set("ここに音声認識結果が表示されます")
+    var.set("認識中...")
     language_code = 'ja-JP'  # a BCP-47 language tag
     client = speech.SpeechClient()
     config = types.RecognitionConfig(

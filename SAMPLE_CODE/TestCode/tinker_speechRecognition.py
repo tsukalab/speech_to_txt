@@ -121,11 +121,11 @@ def btn_clicked():
     root.attributes("-fullscreen", True)
     
     t1 = threading.Thread(target=work1,args=(mikiser,rmikiser,1))
-    t2 = threading.Thread(target=work1,args=(mic,rmic,2))
+    # t2 = threading.Thread(target=work1,args=(mic,rmic,1))
     t1.setDaemon(True)
-    t2.setDaemon(True)
+    # t2.setDaemon(True)
     t1.start()
-    t2.start()
+    # t2.start()
 
 if __name__ == '__main__':
     fontsize = 15
