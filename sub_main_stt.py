@@ -55,24 +55,17 @@ def draw_figure(canvas, figure):
 class Draw_window(object):
     def __init__(self):
         self.is_valid = True
-        self.mixertmp = 1
-        self.mictmp = 1 
         # 定数
         GRAPH_SIZE = (100, 100)
         DATA_SIZE = (500, 500)
-        
+        self.mixertmp = 1
+        self.mictmp = 1        
     # カラム設定
         col1 =  [   [sg.Button('Start', size=(10,2))],
                     [sg.Button('Stop', size=(10,2))],
                     [sg.Button('Select Save', size=(10,2))],
                     [sg.Button('Load', size=(10,2))],           
-                ]                
-        col2 =  [   [sg.Text("PC")],
-                    # 認識結果リアルタイム表示用のテキストボックス'#00db7c'
-                    [sg.Multiline(size=(55,10), key='-M_BOX_1-',background_color='#6fa38a',autoscroll=True)],
-                    [sg.Text("User")],
-                    [sg.T(size=(50,4), key='-M_BOX_1-2', background_color='#fafad2')]# 008080
-                ]   
+                ]  
         col3 =  [   [
                     # 確定認識結ログ果表示用のテキストボックス
                     sg.Multiline(size=(65,17), key='-M_BOX_2-',autoscroll=True, background_color="#00ced1"),
@@ -81,9 +74,9 @@ class Draw_window(object):
                 ]   ]
         layout = [            
                     # 丈夫カラム
-                    [sg.Column(col1),sg.Column(col2),sg.Column(col3),]
+                   
                     # 時系列折れ線グラフ
-                    ,[sg.Canvas(size=(200, 250), key='-CANVAS_GR-'),sg.Canvas(size=(100, 100), key='-CANVAS_EN-')]
+                    [col1,sg.Canvas(size=(200, 250), key='-CANVAS_GR-'),sg.Canvas(size=(100, 100), key='-CANVAS_EN-')]
                 ]
     # Window設定  
         self.window = sg.Window(
@@ -146,10 +139,10 @@ class Draw_window(object):
         
         print("window")
         #別ファイルの GCP Speech to Text を実行する関数の呼び出し
-
         ttsMIC = stt.Listen_print(MIC_INDEX,"USER", 1)
         ttsMIXER = stt.Listen_print(MIXER_INDEX,"PC",0)
         # self._ax5.set_xlim(0, 100)
+        
         while True:
             event, values = self.window.read(timeout=10)
 
@@ -225,6 +218,8 @@ class Draw_window(object):
                 t2.start()
                 ttsMIC.set_progress_result("【何か話してください】")
                 ttsMIXER.set_progress_result("【何か話してください】")
+                self.mictmp = self._data[ttsMIC.get_deviceName_or_number(1)]
+                self.mixertmp = self._data[ttsMIXER.get_deviceName_or_number(1)]
             elif event == 'Alarm':
                 message = values[event]
                 sg.popup_auto_close(message)
@@ -245,16 +240,16 @@ class Draw_window(object):
                 now = datetime.datetime.now()
                 try:
                 # Tkinterの場合 .TKText 経由でアクセス
-                    selected = self.window["-M_BOX_2-"].TKText.selection_get()
+                    # selected = self.window["-M_BOX_2-"].TKText.selection_get()
                     # now.strftime('%Y-%m-%d-%H.%M.%S')
-                    self.window['-M_BOX_3-'].print(now.strftime('%H.%M')+selected, text_color='k')
-                    print(selected)
+                    # self.window['-M_BOX_3-'].print(now.strftime('%H.%M')+selected, text_color='k')
+                    print("selected")
                     # SAVE LOGの保存（簡易）
-                    log_chat = self.window['-M_BOX_3-'].get()
+                    # log_chat = self.window['-M_BOX_3-'].get()
                     # f = open(LOG_DIRECTORY+ttsMIC.get_date()[:10]+'Select_log_chat.txt', 'w')
-                    f = open(LOG_DIRECTORY+now.strftime('%m-%d')+'Select_log_chat.txt', 'w')
-                    f.write(log_chat)
-                    f.close()
+                    # f = open(LOG_DIRECTORY+now.strftime('%m-%d')+'Select_log_chat.txt', 'w')
+                    # f.write(log_chat)
+                    # f.close()
                 except tk._tkinter.TclError:
                     sg.popup('テキストが選択されていません')
                     # pass # 選択範囲がない場合のエラーを無視
@@ -274,11 +269,11 @@ class Draw_window(object):
                         if int(row[6]) ==0:#MIXER
                             "MIXSER"+ row[2][:-4]
                             # load_txt += "MIXSER: "+row[2][:19]+'\n'+row[3]
-                            self.window['-M_BOX_2-'].print( "PC: "+row[2][:19]+'\n'+row[3], text_color='#008080')
+                            # self.window['-M_BOX_2-'].print( "PC: "+row[2][:19]+'\n'+row[3], text_color='#008080')
                             MIXChr += int(row[5])
                         else:
                             load_txt +="MIC: "+row[2][:19]+'\n'+row[3]
-                            self.window['-M_BOX_2-'].print("USER: "+row[2][:19]+'\n'+row[3], text_color='#fafad2')
+                            # self.window['-M_BOX_2-'].print("USER: "+row[2][:19]+'\n'+row[3], text_color='#fafad2')
                             MICChr += int(row[5])
 
                         load_txt+='\n'
@@ -297,37 +292,41 @@ class Draw_window(object):
                 append_graph_data(int(ttsMIC.get_monoChrCount()), int(ttsMIXER.get_monoChrCount()))
                 
                 # 左黒色のテキストボックスに，リアルタイムの認識結果を表示させる
-                self.window['-M_BOX_1-'].update(ttsMIXER.get_deviceName_or_number(0)+":"+str(ttsMIXER.get_chrCount()) +"文字"+'\r\n'+ttsMIXER.get_progress_result(),text_color='black')
-                self.window['-M_BOX_1-2'].update(ttsMIC.get_deviceName_or_number(0) +":"+str(ttsMIC.get_chrCount())   +"文字"+'\r'  +ttsMIC.get_progress_result(),  text_color='black')
-                self._data[ttsMIXER.get_deviceName_or_number(1)]=ttsMIXER.get_chrCount()+int(ttsMIXER.get_monoChrCount())
-                self._data[ttsMIC.get_deviceName_or_number(1)]=ttsMIC.get_chrCount()+int(ttsMIC.get_monoChrCount())
-                # print(self.mictmp+int(ttsMIC.get_monoChrCount()))
+                # self.window['-M_BOX_1-'].update(ttsMIXER.get_deviceName_or_number(0)+":"+str(ttsMIXER.get_chrCount()) +"文字"+'\r\n'+ttsMIXER.get_progress_result(),text_color='black')
+                # self.window['-M_BOX_1-2'].update(ttsMIC.get_deviceName_or_number(0) +":"+str(ttsMIC.get_chrCount())   +"文字"+'\r'  +ttsMIC.get_progress_result(),  text_color='black')
+                # 右下円グラフ，リアルタイムの認識結果を表示させる
+                self._data[ttsMIXER.get_deviceName_or_number(1)]=self.mixertmp+ttsMIXER.get_monoChrCount()
+                self._data[ttsMIC.get_deviceName_or_number(1)]=self.mictmp+ttsMIC.get_monoChrCount()
             
                 def display_result_on_textbox(ttsObject, text_color):
                     audiofilename = ttsObject.get_date()+".wav"; result = [ttsObject.get_result()]; num = ttsObject.get_chrCount();filename = LOG_DIRECTORY+datetime.datetime.now().strftime('%Y-%m-%d')+'log.csv'
-                    self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
+                    # self.window['-M_BOX_2-'].print(ttsObject.get_deviceName_or_number(0)+":"+ttsObject.get_date()+ "\r"+ttsObject.get_result(), text_color=text_color)
                     # change_text_color(ttsMIC)
-                    self._data[ttsObject.get_deviceName_or_number(1)]=self._data[ttsObject.get_deviceName_or_number(1)]+ttsObject.get_chrCount()
+                    self._data[ttsObject.get_deviceName_or_number(1)]=self._data[ttsObject.get_deviceName_or_number(1)]+ttsObject.get_chrCount()                   
                     # LOGの保存（CSV）
                     addwriteCsvTwoContents(audiofilename,  result, num, filename, ttsObject.get_deviceName_or_number(1))
                     ttsObject.init_object()
                 
-                if(ttsMIXER.get_condition()):
-                    # self.mixerttmp = self._data[ttsMIXER.get_deviceName_or_number(1)]
-                    self.mixerttmp = ttsMIXER.get_chrCount()
-                    print(self.mixerttmp)
-                    display_result_on_textbox(ttsMIXER,'#008080') 
+                # 認識が確定した場合に実行
                 if(ttsMIC.get_condition()):
-                    # self.mictmp = self._data[ttsMIC.get_deviceName_or_number(1)]
-                    self.mixerttmp = ttsMIC.get_chrCount()
-                    display_result_on_textbox(ttsMIC,'#fafad2')       
+                    display_result_on_textbox(ttsMIC,'#fafad2') 
+                    self.mictmp = self._data[ttsMIC.get_deviceName_or_number(1)]
 
+                # else:
+                #     ttsMIC.set_progress_result("【☆☆スタートボタンを押すと認識がはじまります】")          
+                # 認識が確定した場合に実行
+                if(ttsMIXER.get_condition()):
+                    self.mictmp = self._data[ttsMIC.get_deviceName_or_number(1)]
+                    display_result_on_textbox(ttsMIXER,'#008080') 
+                # else:
+                #     ttsMIXER.set_progress_result("【☆☆スタートボタンを押すと認識がはじまります】")          
+                
             if event in ('Exit', None):
                 print("aiiiiiii")
-                log_chat = self.window['-M_BOX_2-'].get()
-                f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
-                f.write(log_chat)
-                f.close()
+                # log_chat = self.window['-M_BOX_2-'].get()
+                # f = open(LOG_DIRECTORY+ttsMIC.get_date()+'log_chat.txt', 'w')
+                # f.write(log_chat)
+                # f.close()
                 amount_of_talk_data = (self._ys,self._y2s)
                 # amount_of_talk_data = self._ys
                 f = open(LOG_DIRECTORY+ttsMIC.get_date()+'amount_of_talk_data.txt', 'w')

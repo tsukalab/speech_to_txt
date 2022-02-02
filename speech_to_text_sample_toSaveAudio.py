@@ -88,12 +88,12 @@ class _MicrophoneStream(object):
 
             # save wav failes
             # """
-            wf = wave.open(self._WAVE_OUTPUT_FILENAME, 'wb')
-            wf.setnchannels(1)
-            wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
-            wf.setframerate(RATE)
-            wf.writeframes(b''.join(self._frames))
-            wf.close()
+            # wf = wave.open(self._WAVE_OUTPUT_FILENAME, 'wb')
+            # wf.setnchannels(1)
+            # wf.setsampwidth(self._audio_interface.get_sample_size(FORMAT))
+            # wf.setframerate(RATE)
+            # wf.writeframes(b''.join(self._frames))
+            # wf.close()
             # """
             print("End Save Audio")
         _save_audio()
@@ -162,7 +162,7 @@ class Listen_print(object):
         # See http://g.co/cloud/speech/docs/languages
         # for a list of supported languages.
         # 認識の言語は日本語に変更している
-        language_code = "ja-JP" # a BCP-47 language tag
+        language_code = "ja-JP" # a BCP-47 language tag "en-US"
 
         client = speech.SpeechClient()
         config = speech.RecognitionConfig(
@@ -200,12 +200,8 @@ class Listen_print(object):
 
                     print(AUDIO_FILE_PATH)
 
-                    count=0 
-                    for response in responses:
-                        if (self.stt_status==False):
-                            break
-                        count+=1
-                        
+                    num_chars_printed = 0
+                    for response in responses:                      
                         # print(self._DEVICE_INDEX +  count) 
                         # print("progress"+self._progress_result) 
                         # print("retrun:"+self._return_result ) 
@@ -221,18 +217,27 @@ class Listen_print(object):
 
                         # Display the transcription of the top alternative.
                         transcript = result.alternatives[0].transcript
-                        overwrite_chars = " " * (num_chars_printed - len(transcript))
+                        overwrite_chars = "*" * (num_chars_printed - len(transcript))
+                        diff_result =  (num_chars_printed - len(transcript))
                         # print("overwrite_chars"+overwrite_chars)
 
                         if not result.is_final:                                           
                             # print("transcript" + transcript)
                             # sys.stdout.write(transcript + overwrite_chars + "\r")
                             # sys.stdout.flush()
+
                             num_chars_printed = len(transcript)
                             # txtlist = textwrap.wrap(transcript, int(ww/w))
                             # print(txtlist)
-                            self._progress_result = transcript
-                            self._monoChrCount = len(transcript)
+                            # sys.stdout.write(transcript + overwrite_chars + "\r")
+                            # sys.stdout.flush()
+                            if diff_result<3:
+                                self._progress_result = transcript + overwrite_chars
+                                self._monoChrCount = len(transcript)
+                                # print("resutnum<3"+str(len(transcript))+"trans+num"+str(len(transcript + overwrite_chars)))
+                            # else:
+                                # print("ELSE"+str(len(transcript))+"trans+num"+str(len(transcript + overwrite_chars)))
+                                # print(transcript + overwrite_chars)
                         else:
                             # 認識結果が確定した瞬間一度だけ実行される
                             self.condition = True
@@ -250,7 +255,8 @@ class Listen_print(object):
                             if re.search(r"\b(exit|quit)\b", transcript, re.I):
                                 print("Exiting..")
                                 break
-
+                        if (self.stt_status==False):
+                            break
                             num_chars_printed = 0        
                 except BaseException as e:
                     print("Exception occurred - {}".format(str(e)))
